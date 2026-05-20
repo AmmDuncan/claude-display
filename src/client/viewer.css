@@ -227,9 +227,17 @@ body {
    ============================================================ */
 
 .feed {
-  max-width: 1024px;
+  width: min(94vw, 1600px);
   margin: 0 auto;
   padding: 48px 28px 200px;
+}
+
+@media (min-width: 2000px) {
+  .feed { width: min(80vw, 1800px); }
+}
+
+@media (min-width: 2800px) {
+  .feed { width: min(70vw, 2000px); }
 }
 
 .pruned-marker {

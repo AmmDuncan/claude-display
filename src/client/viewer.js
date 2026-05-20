@@ -303,9 +303,18 @@ html, body {
   transition: background 200ms ease, color 200ms ease;
 }
 body {
-  padding: 36px 40px 44px;
-  max-width: 880px;
+  padding: 40px clamp(28px, 4vw, 64px) 48px;
+  max-width: 1400px;
   margin: 0 auto;
+}
+@media (min-width: 2000px) {
+  body { max-width: 1600px; }
+}
+/* Constrain prose to a comfortable reading length, but let visual blocks
+   (cards, grids, tables, mockups) use the full card width. */
+body > p, body > .deck, body > .lede, body > ul, body > ol, body > blockquote,
+body > h1, body > h2, body > h3, body > h4 {
+  max-width: 880px;
 }
 body > *:first-child { margin-top: 0 !important; }
 body > *:last-child { margin-bottom: 0 !important; }

@@ -1,9 +1,13 @@
 /* claude-display — index page (session list) */
 
 .index-main {
-  max-width: 880px;
+  width: min(92vw, 1100px);
   margin: 0 auto;
   padding: 56px 28px 160px;
+}
+
+@media (min-width: 1800px) {
+  .index-main { width: min(70vw, 1280px); }
 }
 
 .page-head {
