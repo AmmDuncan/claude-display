@@ -111,6 +111,16 @@
     return remaining <= BOTTOM_THRESHOLD_PX;
   }
 
+  // The pill should clear as soon as you've reached (or scrolled past) the
+  // latest card's header, not only at page bottom. With tall cards those
+  // are very different positions.
+  function latestCardHeaderInView() {
+    const last = cardsEl.lastElementChild;
+    if (!last) return true;
+    const rect = last.getBoundingClientRect();
+    return rect.top < window.innerHeight - 120;
+  }
+
   function scrollToBottom(smooth) {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
@@ -483,7 +493,7 @@ ${body}
   });
 
   window.addEventListener("scroll", () => {
-    if (nearBottom() && !newPillEl.hidden) clearUnread();
+    if (!newPillEl.hidden && latestCardHeaderInView()) clearUnread();
   });
 
   /* ============================================================
