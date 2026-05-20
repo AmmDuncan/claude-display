@@ -38,30 +38,42 @@ Reply in chat with **one line**: `pushed to display ↗ — #N` (or similar). Do
 
 Matches global Rule 30 in `~/.claude/CLAUDE.md`. Two surface-specific rules that bite if you forget them:
 
-### 1. Let the tool own the background
+### 1. Let the tool own the canvas — and adapt EVERYTHING else to the host's color scheme
 
-The host iframe applies its own canvas color and adapts to the user's light/dark mode preference. **Do not** set `background` on `body` or your top-level wrapper — it fights the host and creates a visible block of the wrong shade when the user flips modes.
+The host iframe applies its own canvas color and adapts to the user's light/dark mode preference. **Do not** set `background` on `body` or your top-level wrapper — it fights the host and creates a visible block of the wrong shade when the user is in the opposite mode.
 
-Set **only**:
-- Text colors (on a `.wrap` container that scopes `color: inherit` to every descendant — see snippet below)
-- Card / section backgrounds (so cards still float visibly above whatever canvas the tool provides)
+But because the tool owns the canvas, **text color and card backgrounds must also respond to light/dark mode** — you can't just hardcode `color: #111` or your whole push goes invisible the moment the host frame is in dark mode (this has bitten us — black text on a dark canvas).
 
-If you want a particular mode's feel, pick *card* colors that imply it (white cards = light feel; `#111827` cards = dark feel) but let the host canvas show through everywhere else.
-
-Frame-mode-agnostic scaffold:
+Use CSS `light-dark()` to swap. The iframe inherits the user's system scheme via `color-scheme`:
 
 ```html
 <style>
-  .wrap { color: #111; padding: 56px 40px 96px; font-family: -apple-system, 'Inter', system-ui, sans-serif; }
+  :root { color-scheme: light dark; }
+  .wrap {
+    color: light-dark(#111, #e5e7eb);
+    padding: 56px 40px 96px;
+    font-family: -apple-system, 'Inter', system-ui, sans-serif;
+  }
   .wrap *, .wrap h1, .wrap h2, .wrap p, .wrap li, .wrap span, .wrap div, .wrap b, .wrap em { color: inherit; }
-  /* Cards still get their own bg so they read as cards: */
-  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; }
-  /* For a dark-mode-feel push, swap card bg to #111827 and .wrap color to #e5e7eb */
+  /* Cards float above whatever canvas the tool gives us — also adapt to mode */
+  .card {
+    background: light-dark(#fff, #111827);
+    border: 1px solid light-dark(#e5e5e5, #1f2937);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  /* Same treatment for any badge, chip, accent shade you previously hardcoded */
+  .badge { background: light-dark(#f0fdf4, #052e16); color: light-dark(#028043, #6ee7b7); }
 </style>
 <div class="wrap">…</div>
 ```
 
-The failure mode: setting `color: #111` only inside white cards leaves page-level titles/lede inheriting whatever the host frame chose, so half the type washes out depending on the user's mode.
+If you want a particular mode's *feel* regardless of host (e.g. always-dark for a code-heavy push), then OWN the canvas too — `background: #0b0f17; color: #e5e7eb;` on `.wrap` — and commit fully to dark. That's the superpowers-companion pattern, not the claude-display pattern.
+
+Failure modes that have bitten:
+- Setting `color: #111` only inside white cards → page-level titles/lede go invisible on dark host.
+- Hardcoding `color: #111` on `.wrap` with no `light-dark()` → entire push goes invisible on dark host.
+- Hardcoding `background: #fff` on cards with no `light-dark()` → white cards on a dark canvas look like blown-out screens. Adapt card bg too.
 
 ### 2. Stack desktop mockups vertically — don't squeeze them side-by-side
 
@@ -87,6 +99,6 @@ If `display_push` errors with a missing session id, the SessionStart hook hasn't
 display_push({
   title: "PaymentMethodModal copy variants",
   kind: "comparison",
-  html: "<style>.wrap{color:#111;padding:48px 40px;font-family:-apple-system,Inter,system-ui,sans-serif}.wrap *{color:inherit}.card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:24px;margin-bottom:24px}</style><div class='wrap'><h2>Two ways to ask</h2><div class='card'><h3>Now</h3><p>Select a payment method to continue</p></div><div class='card'><h3>Proposed</h3><p>How would you like to pay?</p></div></div>"
+  html: "<style>:root{color-scheme:light dark}.wrap{color:light-dark(#111,#e5e7eb);padding:48px 40px;font-family:-apple-system,Inter,system-ui,sans-serif}.wrap *{color:inherit}.card{background:light-dark(#fff,#111827);border:1px solid light-dark(#e5e5e5,#1f2937);border-radius:12px;padding:24px;margin-bottom:24px}</style><div class='wrap'><h2>Two ways to ask</h2><div class='card'><h3>Now</h3><p>Select a payment method to continue</p></div><div class='card'><h3>Proposed</h3><p>How would you like to pay?</p></div></div>"
 })
 ```
