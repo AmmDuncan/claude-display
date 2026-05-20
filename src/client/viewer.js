@@ -852,9 +852,11 @@ ${body}
       }
 
       // Keep the brand label in sync with the current session.
-      if (s.id === sessionId && projectLabelEl) {
+      if (s.id === sessionId && projectLabelEl && !projectLabelEl.dataset.editing) {
         projectLabelEl.textContent =
           s.label || basenameOf(s.cwd) || "claude-display";
+        projectLabelEl.dataset.cwd = s.cwd || "";
+        projectLabelEl.dataset.hasLabel = s.label ? "true" : "false";
       }
 
       // Delete button (skip on the current session — can't delete the one you're viewing)
@@ -902,6 +904,63 @@ ${body}
       switcherBtnEl.setAttribute("aria-expanded", "false");
     }
   });
+
+  /* === Click-to-edit session label in the topbar === */
+  if (projectLabelEl) {
+    projectLabelEl.style.cursor = "text";
+    projectLabelEl.title = "Click to rename this session";
+    projectLabelEl.addEventListener("click", startEditingLabel);
+  }
+
+  function startEditingLabel() {
+    if (projectLabelEl.dataset.editing) return;
+    projectLabelEl.dataset.editing = "true";
+    const current =
+      projectLabelEl.dataset.hasLabel === "true"
+        ? projectLabelEl.textContent
+        : "";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "project-label-input";
+    input.value = current;
+    input.placeholder = basenameOf(projectLabelEl.dataset.cwd) || "Name this session…";
+    input.maxLength = 80;
+
+    projectLabelEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const finish = async (save) => {
+      if (done) return;
+      done = true;
+      input.removeEventListener("blur", onBlur);
+      input.removeEventListener("keydown", onKeydown);
+      const newLabel = save ? input.value.trim() : current;
+      input.replaceWith(projectLabelEl);
+      delete projectLabelEl.dataset.editing;
+      projectLabelEl.textContent =
+        newLabel || basenameOf(projectLabelEl.dataset.cwd) || "claude-display";
+      projectLabelEl.dataset.hasLabel = newLabel ? "true" : "false";
+      if (save) {
+        try {
+          await fetch("/api/register", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sessionId, label: newLabel }),
+          });
+        } catch {}
+        loadSessionsForSwitcher();
+      }
+    };
+    const onBlur = () => finish(true);
+    const onKeydown = (e) => {
+      if (e.key === "Enter") finish(true);
+      if (e.key === "Escape") finish(false);
+    };
+    input.addEventListener("blur", onBlur);
+    input.addEventListener("keydown", onKeydown);
+  }
 
   markVisited();
   window.addEventListener("focus", markVisited);
