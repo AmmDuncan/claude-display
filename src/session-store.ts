@@ -175,6 +175,27 @@ export function sessionExists(id: string): boolean {
   return existsSync(metaPath(id));
 }
 
+/** Remove a single push from a session. Returns true if it existed. */
+export function deletePush(sessionId: string, pushId: string): boolean {
+  const dir = pushesDir(sessionId);
+  if (!existsSync(dir)) return false;
+  for (const f of readdirSync(dir)) {
+    if (f.endsWith(`-${pushId}.json`)) {
+      rmSync(join(dir, f));
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Delete an entire session from disk. */
+export function deleteSession(id: string): boolean {
+  const dir = sessionDir(id);
+  if (!existsSync(dir)) return false;
+  rmSync(dir, { recursive: true, force: true });
+  return true;
+}
+
 /** First-touch from CLI: ensure session exists without bumping activity. */
 export function registerSession(id: string): SessionMeta {
   return ensureSession(id);

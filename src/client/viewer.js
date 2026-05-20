@@ -110,9 +110,11 @@
 .chip.accent { background:var(--ds-accent-soft); color:var(--ds-accent); border-color:transparent; box-shadow:0 0 12px -4px color-mix(in srgb, var(--ds-accent) 40%, transparent); }
 `;
 
-  let unreadCount = 0;
+  const unreadIds = new Set();
   let totalPushes = 0;
   const iframes = new Set();
+  let latestCardObserver = null;
+  let bumpAt = 0;
 
   /* ============================================================
      Self-measure message bridge — iframes post their measured body
@@ -222,15 +224,6 @@
     return remaining <= BOTTOM_THRESHOLD_PX;
   }
 
-  // The pill should clear as soon as you've reached (or scrolled past) the
-  // latest card's header, not only at page bottom. With tall cards those
-  // are very different positions.
-  function latestCardHeaderInView() {
-    const last = cardsEl.lastElementChild;
-    if (!last) return true;
-    const rect = last.getBoundingClientRect();
-    return rect.top < window.innerHeight - 120;
-  }
 
   function scrollToBottom(smooth) {
     window.scrollTo({
@@ -322,6 +315,32 @@
     time.className = "push-time";
     time.textContent = formatTime(push.createdAt);
     meta.appendChild(time);
+
+    const del = document.createElement("button");
+    del.className = "push-del";
+    del.type = "button";
+    del.title = "Delete this push";
+    del.setAttribute("aria-label", "Delete this push");
+    del.innerHTML =
+      '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3.5 4h9M6 4V2.5h4V4M5 4l.5 9a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1L11 4M7 6.5v5M9 6.5v5"/></svg>';
+    del.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      try {
+        await fetch(
+          "/api/sessions/" +
+            encodeURIComponent(sessionId) +
+            "/pushes/" +
+            encodeURIComponent(push.id),
+          { method: "DELETE" },
+        );
+        // Optimistic remove — SSE 'remove' will also fire and be a no-op.
+        removeCardFromDom(push.id);
+      } catch (err) {
+        console.error("[claude-display] delete failed", err);
+      }
+    });
+    meta.appendChild(del);
 
     card.appendChild(meta);
 
@@ -568,16 +587,57 @@ ${body}
     return { wasNearBottom, card };
   }
 
-  function bumpUnread() {
-    unreadCount += 1;
-    newPillEl.hidden = false;
+  function removeCardFromDom(pushId) {
+    const card = document.getElementById("push-" + pushId);
+    if (card) card.remove();
+    unreadIds.delete(pushId);
+    totalPushes = Math.max(0, totalPushes - 1);
+    setPushCount(totalPushes);
+    // Re-render the pill count if changed.
+    const n = unreadIds.size;
+    newPillEl.hidden = n === 0;
+    newPillText.textContent = n + " new push" + (n === 1 ? "" : "es");
+  }
+
+  function bumpUnread(pushId) {
+    if (pushId) unreadIds.add(pushId);
+    bumpAt = Date.now();
+    const n = unreadIds.size;
+    newPillEl.hidden = n === 0;
     newPillText.textContent =
-      unreadCount + " new push" + (unreadCount === 1 ? "" : "es");
+      n + " new push" + (n === 1 ? "" : "es");
+    watchLatestCardForIntersection();
   }
 
   function clearUnread() {
-    unreadCount = 0;
+    unreadIds.clear();
     newPillEl.hidden = true;
+    if (latestCardObserver) {
+      latestCardObserver.disconnect();
+      latestCardObserver = null;
+    }
+  }
+
+  /* IntersectionObserver on the *latest* card. We only clear unread when
+     the card actually crosses 50% visible — never on layout shifts caused
+     by iframe self-measure resize (which fired the scroll-anchoring event
+     that used to wrongly reset the counter). */
+  function watchLatestCardForIntersection() {
+    const last = cardsEl.lastElementChild;
+    if (!last) return;
+    if (latestCardObserver) latestCardObserver.disconnect();
+    latestCardObserver = new IntersectionObserver(
+      (entries) => {
+        // Ignore intersection fires within 900ms of a bump — those are from
+        // the iframe self-measure resize, not real user scroll.
+        if (Date.now() - bumpAt < 900) return;
+        if (entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.4)) {
+          clearUnread();
+        }
+      },
+      { threshold: [0, 0.4, 0.6, 1] },
+    );
+    latestCardObserver.observe(last);
   }
 
   newPillEl.addEventListener("click", () => {
@@ -585,9 +645,8 @@ ${body}
     scrollToLatestCard(true);
   });
 
-  window.addEventListener("scroll", () => {
-    if (!newPillEl.hidden && latestCardHeaderInView()) clearUnread();
-  });
+  // Clearing is driven by IntersectionObserver, not scroll events —
+  // resize-anchoring scrolls used to spuriously reset the counter.
 
   /* ============================================================
      Hydrate + SSE
@@ -627,15 +686,20 @@ ${body}
         applyConfig(cfg, { skipServer: true });
       } catch {}
     });
+    es.addEventListener("remove", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data && data.pushId) removeCardFromDom(data.pushId);
+      } catch {}
+    });
     es.addEventListener("push", (e) => {
       try {
         const push = JSON.parse(e.data);
         const { wasNearBottom } = appendPush(push, { fresh: true });
         if (wasNearBottom) {
-          // Wait a frame so the new card is in the DOM and laid out.
           requestAnimationFrame(() => scrollToLatestCard(true));
         } else {
-          bumpUnread();
+          bumpUnread(push.id);
         }
       } catch (err) {
         console.error("[claude-display] bad push payload", err);
@@ -692,21 +756,74 @@ ${body}
     }
   }
 
+  let switcherSessions = [];
+  let switcherQuery = "";
+
   function renderSwitcher(sessions) {
+    switcherSessions = sessions || [];
     switcherMenuEl.innerHTML = "";
+
+    // Search box
+    const searchBar = document.createElement("div");
+    searchBar.className = "switcher-search";
+    const search = document.createElement("input");
+    search.type = "search";
+    search.placeholder = "Filter by project or id…";
+    search.value = switcherQuery;
+    search.addEventListener("input", (e) => {
+      switcherQuery = e.target.value;
+      renderSwitcherList();
+    });
+    searchBar.appendChild(search);
+    switcherMenuEl.appendChild(searchBar);
+
+    // Scrollable list
+    const list = document.createElement("div");
+    list.className = "switcher-list";
+    list.id = "switcher-list";
+    switcherMenuEl.appendChild(list);
+
+    // Footer
+    const footerbar = document.createElement("div");
+    footerbar.className = "switcher-footerbar";
+    const allLink = document.createElement("a");
+    allLink.href = "/";
+    allLink.className = "switcher-footer";
+    allLink.textContent = "View all sessions →";
+    footerbar.appendChild(allLink);
+    switcherMenuEl.appendChild(footerbar);
+
+    renderSwitcherList();
+    // Focus the search input when the menu opens.
+    setTimeout(() => search.focus(), 30);
+  }
+
+  function renderSwitcherList() {
+    const list = switcherMenuEl.querySelector("#switcher-list");
+    if (!list) return;
+    list.innerHTML = "";
+
     let lastVisited = {};
     try {
       lastVisited = JSON.parse(localStorage.getItem(LAST_VISITED_KEY) || "{}");
     } catch {}
 
-    if (sessions.length === 0) {
+    const q = switcherQuery.trim().toLowerCase();
+    const filtered = switcherSessions.filter((s) => {
+      if (!q) return true;
+      const name = (basenameOf(s.cwd) || "").toLowerCase();
+      return name.includes(q) || s.id.toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
       const empty = document.createElement("div");
       empty.className = "switcher-footer";
-      empty.textContent = "No other sessions registered.";
-      switcherMenuEl.appendChild(empty);
+      empty.textContent = q ? "No sessions match." : "No sessions registered.";
+      list.appendChild(empty);
+      return;
     }
 
-    for (const s of sessions) {
+    for (const s of filtered) {
       const item = document.createElement("a");
       item.className = "switcher-item";
       if (s.id === sessionId) item.classList.add("current");
@@ -733,23 +850,13 @@ ${body}
         item.appendChild(dot);
       }
 
-      // Update project label for the current session.
+      // Keep the brand label in sync with the current session's project.
       if (s.id === sessionId && projectLabelEl) {
         projectLabelEl.textContent = basenameOf(s.cwd) || "claude-display";
       }
 
-      switcherMenuEl.appendChild(item);
+      list.appendChild(item);
     }
-
-    const divider = document.createElement("div");
-    divider.className = "switcher-divider";
-    switcherMenuEl.appendChild(divider);
-
-    const allLink = document.createElement("a");
-    allLink.href = "/";
-    allLink.className = "switcher-footer";
-    allLink.textContent = "View all sessions →";
-    switcherMenuEl.appendChild(allLink);
   }
 
   switcherBtnEl.addEventListener("click", (e) => {

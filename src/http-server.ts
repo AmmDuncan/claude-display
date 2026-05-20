@@ -4,6 +4,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   appendPush,
+  deletePush,
+  deleteSession,
   getSessionView,
   listSessionSummaries,
   registerSession,
@@ -166,6 +168,20 @@ export function startHttpServer(): void {
     });
   });
 
+  app.delete("/api/sessions/:id/pushes/:pushId", (req, res) => {
+    const id = String(req.params.id);
+    const pushId = String(req.params.pushId);
+    const ok = deletePush(id, pushId);
+    if (ok) broadcast(id, "remove", { pushId });
+    res.json({ ok });
+  });
+
+  app.delete("/api/sessions/:id", (req, res) => {
+    const id = String(req.params.id);
+    const ok = deleteSession(id);
+    res.json({ ok });
+  });
+
   app.post("/api/push", (req: Request, res: Response) => {
     const { sessionId, html, title, kind } = req.body ?? {};
     if (typeof sessionId !== "string" || !sessionId.trim()) {
@@ -195,6 +211,18 @@ export function startHttpServer(): void {
     writeLock(port);
     sweepIdleSessions();
   });
+
+  // Periodic GC of idle sessions every 10 minutes (in addition to the
+  // probabilistic sweep on each push). Without this, low-traffic servers
+  // can hoard sessions long past the 24h TTL.
+  const sweepTimer = setInterval(() => {
+    try {
+      sweepIdleSessions();
+    } catch {
+      /* swallow */
+    }
+  }, 10 * 60 * 1000);
+  sweepTimer.unref();
 
   const shutdown = () => {
     clearLockIfMine();
