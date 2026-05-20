@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
@@ -127,6 +127,9 @@ function cmdSetup() {
   //    Falling back to a direct edit if the CLI isn't on PATH.
   registerMcp(mcpEntry);
 
+  // 1b. Install the `using-display` skill so agents discover how to call display_push.
+  installSkill();
+
   // 2. Add SessionStart hooks to ~/.claude/settings.json (hooks DO belong here).
   const settings = existsSync(settingsPath)
     ? (JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<string, unknown>)
@@ -172,6 +175,19 @@ function cmdSetup() {
   console.log(`  - MCP registered at user scope (\`claude mcp list\` to verify)`);
   console.log(`  - SessionStart hooks added to ${settingsPath}`);
   console.log(`Restart Claude Code (fully quit + relaunch) to activate.`);
+}
+
+function installSkill(): void {
+  const src = resolve(PROJECT_ROOT, "skills", "using-display", "SKILL.md");
+  if (!existsSync(src)) {
+    console.warn(`[claude-display] skill source missing at ${src} — skipping skill install`);
+    return;
+  }
+  const destDir = join(homedir(), ".claude", "skills", "using-display");
+  const dest = join(destDir, "SKILL.md");
+  mkdirSync(destDir, { recursive: true });
+  copyFileSync(src, dest);
+  console.log(`  - using-display skill installed to ${dest}`);
 }
 
 function registerMcp(mcpEntry: string): void {
