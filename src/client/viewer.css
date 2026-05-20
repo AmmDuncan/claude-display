@@ -647,6 +647,10 @@ body {
   background: transparent;
 }
 
+.new-pill[hidden] {
+  display: none !important;
+}
+
 .new-pill {
   position: fixed;
   right: 32px;
