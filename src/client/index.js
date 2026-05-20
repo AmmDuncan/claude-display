@@ -6,10 +6,12 @@
   const countEl = document.getElementById("session-count");
   const themeToggleEl = document.getElementById("theme-toggle");
   const presetBtnEls = Array.from(document.querySelectorAll(".preset-btn"));
+  const densityBtnEls = Array.from(document.querySelectorAll(".density-btn"));
 
   const CONFIG_KEY = "claude-display:config";
   const LAST_VISITED_KEY = "claude-display:last-visited";
   const PRESETS = ["paper", "aurora", "slate"];
+  const DENSITIES = ["carded", "flat"];
 
   function currentTheme() {
     return document.documentElement.getAttribute("data-theme") || "dark";
@@ -17,25 +19,34 @@
   function currentPreset() {
     return document.documentElement.getAttribute("data-preset") || "paper";
   }
+  function currentDensity() {
+    return document.documentElement.getAttribute("data-density") || "carded";
+  }
 
   function syncPresetButtons(active) {
     presetBtnEls.forEach((b) => b.classList.toggle("active", b.dataset.preset === active));
+  }
+  function syncDensityButtons(active) {
+    densityBtnEls.forEach((b) => b.classList.toggle("active", b.dataset.density === active));
   }
 
   function applyConfig(patch, opts) {
     const theme = patch.theme === "light" || patch.theme === "dark" ? patch.theme : currentTheme();
     const preset = PRESETS.includes(patch.preset) ? patch.preset : currentPreset();
+    const density = DENSITIES.includes(patch.density) ? patch.density : currentDensity();
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-preset", preset);
+    document.documentElement.setAttribute("data-density", density);
     syncPresetButtons(preset);
+    syncDensityButtons(density);
     try {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify({ preset, theme }));
+      localStorage.setItem(CONFIG_KEY, JSON.stringify({ preset, theme, density }));
     } catch {}
     if (!opts || !opts.skipServer) {
       fetch("/api/config", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ preset, theme }),
+        body: JSON.stringify({ preset, theme, density }),
       }).catch(() => {});
     }
   }
@@ -46,7 +57,11 @@
   presetBtnEls.forEach((btn) => {
     btn.addEventListener("click", () => applyConfig({ preset: btn.dataset.preset }));
   });
+  densityBtnEls.forEach((btn) => {
+    btn.addEventListener("click", () => applyConfig({ density: btn.dataset.density }));
+  });
   syncPresetButtons(currentPreset());
+  syncDensityButtons(currentDensity());
 
   // Hydrate from server on load — in case another tab changed config.
   fetch("/api/config")

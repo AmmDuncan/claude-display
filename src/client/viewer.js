@@ -14,6 +14,7 @@
   const newPillText = document.getElementById("new-pill-text");
   const themeToggleEl = document.getElementById("theme-toggle");
   const presetBtnEls = Array.from(document.querySelectorAll(".preset-btn"));
+  const densityBtnEls = Array.from(document.querySelectorAll(".density-btn"));
   const switcherBtnEl = document.getElementById("switcher-btn");
   const switcherMenuEl = document.getElementById("switcher-menu");
   const projectLabelEl = document.getElementById("project-label");
@@ -22,6 +23,7 @@
   const CONFIG_KEY = "claude-display:config";
   const LAST_VISITED_KEY = "claude-display:last-visited";
   const PRESETS = ["paper", "aurora", "slate"];
+  const DENSITIES = ["carded", "flat"];
 
   /* The token block injected into every iframe wrapper — six combos so
      pushed HTML themes correctly regardless of host preset/mode. */
@@ -148,31 +150,42 @@
   function currentPreset() {
     return document.documentElement.getAttribute("data-preset") || "paper";
   }
+  function currentDensity() {
+    return document.documentElement.getAttribute("data-density") || "carded";
+  }
 
   function applyConfig(patch, opts) {
     const theme = patch.theme === "light" || patch.theme === "dark"
       ? patch.theme
       : currentTheme();
     const preset = PRESETS.includes(patch.preset) ? patch.preset : currentPreset();
+    const density = DENSITIES.includes(patch.density) ? patch.density : currentDensity();
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-preset", preset);
+    document.documentElement.setAttribute("data-density", density);
     syncPresetButtons(preset);
+    syncDensityButtons(density);
     if (!opts || !opts.skipPersist) {
       try {
-        localStorage.setItem(CONFIG_KEY, JSON.stringify({ preset, theme }));
+        localStorage.setItem(CONFIG_KEY, JSON.stringify({ preset, theme, density }));
       } catch (e) {
         /* ignore */
       }
     }
-    broadcastConfigToIframes({ preset, theme });
+    broadcastConfigToIframes({ preset, theme, density });
     if (!opts || !opts.skipServer) {
-      pushConfigToServer({ preset, theme });
+      pushConfigToServer({ preset, theme, density });
     }
   }
 
   function syncPresetButtons(active) {
     presetBtnEls.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.preset === active);
+    });
+  }
+  function syncDensityButtons(active) {
+    densityBtnEls.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.density === active);
     });
   }
 
@@ -210,7 +223,13 @@
       applyConfig({ preset: btn.dataset.preset });
     });
   });
+  densityBtnEls.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      applyConfig({ density: btn.dataset.density });
+    });
+  });
   syncPresetButtons(currentPreset());
+  syncDensityButtons(currentDensity());
 
   /* ============================================================
      Scroll helpers
@@ -400,8 +419,9 @@
   }
 
   function buildDefaultWrapper(body, theme, preset, pushId) {
+    const density = currentDensity();
     return `<!DOCTYPE html>
-<html data-theme="${theme}" data-preset="${preset}">
+<html data-theme="${theme}" data-preset="${preset}" data-density="${density}">
 <head>
 <meta charset="utf-8" />
 <base target="_blank" />
@@ -536,6 +556,8 @@ th, td {
 }
 th { color: var(--ds-muted); font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
 img { max-width: 100%; height: auto; border-radius: 10px; }
+:root[data-density="flat"] html,
+:root[data-density="flat"] body { background: transparent; }
 </style>
 </head>
 <body>
@@ -552,6 +574,10 @@ ${body}
       document.documentElement.setAttribute("data-preset", cfg.preset);
       window.__claudeDisplayPreset = cfg.preset;
     }
+    if (cfg.density === "carded" || cfg.density === "flat") {
+      document.documentElement.setAttribute("data-density", cfg.density);
+      window.__claudeDisplayDensity = cfg.density;
+    }
   }
   window.addEventListener("message", function(e){
     if (!e || !e.data) return;
@@ -566,9 +592,10 @@ ${body}
   }
 
   function injectBridge(html, theme, preset, pushId) {
+    const density = currentDensity();
     const configScript =
-      "<script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}}a(" +
-      JSON.stringify({ theme, preset }) +
+      "<script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}if(c.density==='carded'||c.density==='flat'){document.documentElement.setAttribute('data-density',c.density);window.__claudeDisplayDensity=c.density}}a(" +
+      JSON.stringify({ theme, preset, density }) +
       ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='claude-display:config')a(e.data);if(e.data.type==='claude-display:theme')a({theme:e.data.theme})})})();</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
     const combined = configScript + measureScript;

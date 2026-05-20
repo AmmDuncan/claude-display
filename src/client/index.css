@@ -249,6 +249,35 @@
 .swatch-aurora { background: linear-gradient(135deg, #b8c8ff, #6d4eff); }
 .swatch-slate { background: linear-gradient(135deg, #7dd3fc, #2f5fd1); }
 
+/* Density toggle — two-button group, mirrors .preset-group */
+.density-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-radius: 10px;
+}
+.density-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  padding: 0;
+  color: var(--ds-muted);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.density-btn:hover { background: var(--ds-surface-soft); color: var(--ds-ink); }
+.density-btn.active { background: var(--ds-accent-soft); color: var(--ds-accent); }
+.density-btn:active { transform: scale(0.95); }
+.density-btn svg { display: block; }
+
 /* Back link in viewer */
 .back-link {
   display: inline-flex;
