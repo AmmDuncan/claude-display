@@ -70,10 +70,21 @@ Use CSS `light-dark()` to swap. The iframe inherits the user's system scheme via
 
 If you want a particular mode's *feel* regardless of host (e.g. always-dark for a code-heavy push), then OWN the canvas too — `background: #0b0f17; color: #e5e7eb;` on `.wrap` — and commit fully to dark. That's the superpowers-companion pattern, not the claude-display pattern.
 
+**Locked-mode containers must set their own text color (inverse rule).** Any container that paints a *fixed*, non-adaptive background — a terminal/code block locked to dark, an always-dark callout, a hero filled with a brand color — MUST also set its own text color AND re-scope `color: inherit` to its children. Otherwise it inherits `color: light-dark(…)` from `.wrap` and the text flips to the wrong shade for that container's bg in one of the two modes (e.g. dark text on a locked-dark terminal in light host mode = invisible). Background and text are a pair: commit one, commit the other.
+
+```css
+.terminal {
+  background: #0f172a;  /* locked dark, ignores host mode */
+  color: #e6edf3;       /* MUST set text too */
+}
+.terminal * { color: inherit; }  /* re-scope so .wrap's light-dark() doesn't leak in */
+```
+
 Failure modes that have bitten:
 - Setting `color: #111` only inside white cards → page-level titles/lede go invisible on dark host.
 - Hardcoding `color: #111` on `.wrap` with no `light-dark()` → entire push goes invisible on dark host.
 - Hardcoding `background: #fff` on cards with no `light-dark()` → white cards on a dark canvas look like blown-out screens. Adapt card bg too.
+- Painting a locked-dark terminal but letting it inherit `.wrap`'s light-mode `#111` text → black-on-dark inside the terminal block.
 
 ### 2. Stack desktop mockups vertically — don't squeeze them side-by-side
 
