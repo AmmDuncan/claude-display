@@ -115,8 +115,9 @@
   const unreadIds = new Set();
   let totalPushes = 0;
   const iframes = new Set();
-  let latestCardObserver = null;
+  const cardObservers = new Map(); // pushId → IntersectionObserver
   let bumpAt = 0;
+  let hasContentBelow = false;
 
   /* ============================================================
      Self-measure message bridge — iframes post their measured body
@@ -623,66 +624,124 @@ ${body}
     const card = renderPush(push, opts);
     cardsEl.appendChild(card);
     setPushCount(totalPushes + 1);
+    // requestAnimationFrame so layout settles before pill recomputes.
+    requestAnimationFrame(updatePill);
     return { wasNearBottom, card };
   }
 
   function removeCardFromDom(pushId) {
     const card = document.getElementById("push-" + pushId);
     if (card) card.remove();
+    const obs = cardObservers.get(pushId);
+    if (obs) {
+      obs.disconnect();
+      cardObservers.delete(pushId);
+    }
     unreadIds.delete(pushId);
     totalPushes = Math.max(0, totalPushes - 1);
     setPushCount(totalPushes);
-    // Re-render the pill count if changed.
-    const n = unreadIds.size;
-    newPillEl.hidden = n === 0;
-    newPillText.textContent = n + " new push" + (n === 1 ? "" : "es");
+    updatePill();
   }
 
   function bumpUnread(pushId) {
-    if (pushId) unreadIds.add(pushId);
-    bumpAt = Date.now();
-    const n = unreadIds.size;
-    newPillEl.hidden = n === 0;
-    newPillText.textContent =
-      n + " new push" + (n === 1 ? "" : "es");
-    watchLatestCardForIntersection();
-  }
-
-  function clearUnread() {
-    unreadIds.clear();
-    newPillEl.hidden = true;
-    if (latestCardObserver) {
-      latestCardObserver.disconnect();
-      latestCardObserver = null;
+    if (pushId && !unreadIds.has(pushId)) {
+      unreadIds.add(pushId);
+      bumpAt = Date.now();
+      observeUnreadCard(pushId);
     }
+    updatePill();
   }
 
-  /* IntersectionObserver on the *latest* card. We only clear unread when
-     the card actually crosses 50% visible — never on layout shifts caused
-     by iframe self-measure resize (which fired the scroll-anchoring event
-     that used to wrongly reset the counter). */
-  function watchLatestCardForIntersection() {
-    const last = cardsEl.lastElementChild;
-    if (!last) return;
-    if (latestCardObserver) latestCardObserver.disconnect();
-    latestCardObserver = new IntersectionObserver(
+  /* One observer per unread card. As each crosses 40% visible, it's marked
+     as read and the counter decrements. Bursts of layout-shift from iframe
+     self-measure are ignored for 900ms after the most recent bump. */
+  function observeUnreadCard(pushId) {
+    const card = document.getElementById("push-" + pushId);
+    if (!card) return;
+    if (cardObservers.has(pushId)) {
+      cardObservers.get(pushId).disconnect();
+    }
+    const obs = new IntersectionObserver(
       (entries) => {
-        // Ignore intersection fires within 900ms of a bump — those are from
-        // the iframe self-measure resize, not real user scroll.
         if (Date.now() - bumpAt < 900) return;
         if (entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.4)) {
-          clearUnread();
+          markCardRead(pushId);
         }
       },
       { threshold: [0, 0.4, 0.6, 1] },
     );
-    latestCardObserver.observe(last);
+    obs.observe(card);
+    cardObservers.set(pushId, obs);
+  }
+
+  function markCardRead(pushId) {
+    if (!unreadIds.has(pushId)) return;
+    unreadIds.delete(pushId);
+    const obs = cardObservers.get(pushId);
+    if (obs) {
+      obs.disconnect();
+      cardObservers.delete(pushId);
+    }
+    updatePill();
+  }
+
+  function checkContentBelow() {
+    const remaining =
+      document.documentElement.scrollHeight -
+      window.scrollY -
+      window.innerHeight;
+    hasContentBelow = remaining > 200;
+  }
+
+  /* Pill state machine:
+     - any unread       → "N new push(es)", click jumps to oldest unread
+     - none, more below → "↓ Scroll to last", click jumps to last card
+     - none, at bottom  → hidden */
+  function updatePill() {
+    checkContentBelow();
+    const n = unreadIds.size;
+    if (n > 0) {
+      newPillEl.hidden = false;
+      newPillEl.dataset.mode = "unread";
+      newPillText.textContent =
+        n + " new push" + (n === 1 ? "" : "es");
+    } else if (hasContentBelow) {
+      newPillEl.hidden = false;
+      newPillEl.dataset.mode = "scroll";
+      newPillText.textContent = "Scroll to last";
+    } else {
+      newPillEl.hidden = true;
+      delete newPillEl.dataset.mode;
+    }
+  }
+
+  function scrollToFirstUnread(smooth) {
+    const first = [...unreadIds][0]; // Set preserves insertion order
+    if (!first) {
+      scrollToLatestCard(smooth);
+      return;
+    }
+    const card = document.getElementById("push-" + first);
+    if (!card) {
+      scrollToLatestCard(smooth);
+      return;
+    }
+    card.scrollIntoView({
+      behavior: smooth ? "smooth" : "auto",
+      block: "start",
+    });
   }
 
   newPillEl.addEventListener("click", () => {
-    clearUnread();
-    scrollToLatestCard(true);
+    if (newPillEl.dataset.mode === "unread") {
+      scrollToFirstUnread(true);
+    } else {
+      scrollToLatestCard(true);
+    }
   });
+
+  window.addEventListener("scroll", updatePill, { passive: true });
+  window.addEventListener("resize", updatePill);
 
   // Clearing is driven by IntersectionObserver, not scroll events —
   // resize-anchoring scrolls used to spuriously reset the counter.
@@ -702,7 +761,10 @@ ${body}
       for (const p of view.pushes || []) {
         appendPush(p, { fresh: false });
       }
-      requestAnimationFrame(() => scrollToBottom(false));
+      requestAnimationFrame(() => {
+        scrollToBottom(false);
+        updatePill();
+      });
     } catch (err) {
       console.error("[easel] hydrate failed", err);
     }
