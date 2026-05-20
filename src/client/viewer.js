@@ -13,9 +13,13 @@
   const newPillEl = document.getElementById("new-pill");
   const newPillText = document.getElementById("new-pill-text");
   const themeToggleEl = document.getElementById("theme-toggle");
+  const switcherBtnEl = document.getElementById("switcher-btn");
+  const switcherMenuEl = document.getElementById("switcher-menu");
+  const projectLabelEl = document.getElementById("project-label");
 
   const BOTTOM_THRESHOLD_PX = 220;
   const THEME_KEY = "claude-display:theme";
+  const LAST_VISITED_KEY = "claude-display:last-visited";
 
   let unreadCount = 0;
   let totalPushes = 0;
@@ -511,6 +515,136 @@ ${body}
       setTimeout(connectSse, 1500);
     };
   }
+
+  /* ============================================================
+     Last-visited tracking + session switcher dropdown
+     ============================================================ */
+
+  function markVisited() {
+    try {
+      const map = JSON.parse(localStorage.getItem(LAST_VISITED_KEY) || "{}");
+      map[sessionId] = Date.now();
+      localStorage.setItem(LAST_VISITED_KEY, JSON.stringify(map));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function basenameOf(p) {
+    if (!p) return null;
+    const t = String(p).replace(/\/+$/, "");
+    const i = t.lastIndexOf("/");
+    return i >= 0 ? t.slice(i + 1) : t;
+  }
+
+  function relTime(ts) {
+    if (!ts) return "—";
+    const diff = Date.now() - ts;
+    if (diff < 30_000) return "just now";
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return s + "s";
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + "m";
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + "h";
+    return Math.floor(h / 24) + "d";
+  }
+
+  async function loadSessionsForSwitcher() {
+    try {
+      const r = await fetch("/api/sessions");
+      const data = await r.json();
+      renderSwitcher(data.sessions || []);
+    } catch (e) {
+      renderSwitcher([]);
+    }
+  }
+
+  function renderSwitcher(sessions) {
+    switcherMenuEl.innerHTML = "";
+    let lastVisited = {};
+    try {
+      lastVisited = JSON.parse(localStorage.getItem(LAST_VISITED_KEY) || "{}");
+    } catch {}
+
+    if (sessions.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "switcher-footer";
+      empty.textContent = "No other sessions registered.";
+      switcherMenuEl.appendChild(empty);
+    }
+
+    for (const s of sessions) {
+      const item = document.createElement("a");
+      item.className = "switcher-item";
+      if (s.id === sessionId) item.classList.add("current");
+      item.href = "/s/" + encodeURIComponent(s.id);
+
+      const project = document.createElement("span");
+      project.className = "project";
+      project.textContent = basenameOf(s.cwd) || s.id.slice(0, 8);
+      project.title = s.cwd || s.id;
+      item.appendChild(project);
+
+      const count = document.createElement("span");
+      count.className = "count";
+      count.textContent = s.pushCount + " · " + relTime(s.lastActivity);
+      item.appendChild(count);
+
+      if (
+        s.id !== sessionId &&
+        s.pushCount > 0 &&
+        s.lastActivity > (lastVisited[s.id] || 0)
+      ) {
+        const dot = document.createElement("span");
+        dot.className = "unread-dot";
+        item.appendChild(dot);
+      }
+
+      // Update project label for the current session.
+      if (s.id === sessionId && projectLabelEl) {
+        projectLabelEl.textContent = basenameOf(s.cwd) || "claude-display";
+      }
+
+      switcherMenuEl.appendChild(item);
+    }
+
+    const divider = document.createElement("div");
+    divider.className = "switcher-divider";
+    switcherMenuEl.appendChild(divider);
+
+    const allLink = document.createElement("a");
+    allLink.href = "/";
+    allLink.className = "switcher-footer";
+    allLink.textContent = "View all sessions →";
+    switcherMenuEl.appendChild(allLink);
+  }
+
+  switcherBtnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = switcherMenuEl.hidden;
+    if (open) {
+      switcherMenuEl.hidden = false;
+      switcherBtnEl.setAttribute("aria-expanded", "true");
+      loadSessionsForSwitcher();
+    } else {
+      switcherMenuEl.hidden = true;
+      switcherBtnEl.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!switcherMenuEl.hidden && !switcherMenuEl.contains(e.target) && e.target !== switcherBtnEl) {
+      switcherMenuEl.hidden = true;
+      switcherBtnEl.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  markVisited();
+  window.addEventListener("focus", markVisited);
+  setInterval(markVisited, 15_000);
+  loadSessionsForSwitcher();
+  setInterval(loadSessionsForSwitcher, 8_000);
 
   hydrate().then(connectSse);
 })();

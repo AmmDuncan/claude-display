@@ -5,10 +5,24 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { spawn } from "node:child_process";
 import { ensureHttpServer } from "./server-manager.js";
 import { resolveClaudeSessionId } from "./session-id.js";
 
-const TOOL_NAME = "display_push";
+function openUrlInBrowser(url: string): void {
+  const platform = process.platform;
+  const cmd = platform === "darwin" ? "open" : platform === "win32" ? "start" : "xdg-open";
+  const args = platform === "win32" ? ["", url] : [url];
+  try {
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+    child.unref();
+  } catch {
+    /* swallow */
+  }
+}
+
+const TOOL_PUSH = "display_push";
+const TOOL_OPEN = "display_open";
 
 const inputSchema = {
   type: "object" as const,
@@ -65,27 +79,25 @@ async function main() {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [
       {
-        name: TOOL_NAME,
+        name: TOOL_PUSH,
         description:
           "Push an HTML card to this session's live browser tab (claude-display). Every card appends to a single scrolling page that the user keeps open in split-screen. Use proactively (per global Rule 33) for wordy explanations, mockups, diagrams, diffs, ≥3-option comparisons, or progress views — do NOT ask permission. Pass full HTML (not Markdown).",
         inputSchema,
+      },
+      {
+        name: TOOL_OPEN,
+        description:
+          "Force-open a fresh browser tab for the current claude-display session. Call this when the user asks for a new window, side-by-side view, or to re-open a closed tab. The default SessionStart hook only opens a tab if none are alive; this tool overrides that.",
+        inputSchema: {
+          type: "object" as const,
+          properties: {},
+          additionalProperties: false,
+        },
       },
     ],
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
-    if (req.params.name !== TOOL_NAME) {
-      throw new Error(`unknown tool: ${req.params.name}`);
-    }
-    const args = (req.params.arguments ?? {}) as {
-      html?: string;
-      title?: string;
-      kind?: string;
-    };
-    if (typeof args.html !== "string" || !args.html.length) {
-      throw new Error("display_push: `html` is required");
-    }
-
     const sessionId = resolveClaudeSessionId();
     if (!sessionId) {
       return {
@@ -98,8 +110,33 @@ async function main() {
         isError: true,
       };
     }
-
     const { port } = await ensureHttpServer();
+
+    if (req.params.name === TOOL_OPEN) {
+      const url = `http://localhost:${port}/s/${sessionId}`;
+      openUrlInBrowser(url);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `opened a new tab → ${url}`,
+          },
+        ],
+      };
+    }
+
+    if (req.params.name !== TOOL_PUSH) {
+      throw new Error(`unknown tool: ${req.params.name}`);
+    }
+    const args = (req.params.arguments ?? {}) as {
+      html?: string;
+      title?: string;
+      kind?: string;
+    };
+    if (typeof args.html !== "string" || !args.html.length) {
+      throw new Error("display_push: `html` is required");
+    }
+
     const result = await pushToServer({
       sessionId,
       html: args.html,

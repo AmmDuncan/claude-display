@@ -16,8 +16,9 @@ function help() {
   console.log(`claude-display — live browser feed for Claude Code sessions
 
 Usage:
-  claude-display open            ensure server is running, open this session's tab
+  claude-display open            ensure server is running, open this session's tab (or skip if a tab is already alive)
   claude-display open --quiet    same but no stdout (for SessionStart hook)
+  claude-display open --force    always open a new browser tab regardless of presence
   claude-display url             print this session's URL
   claude-display setup           install SessionStart hook + register MCP in ~/.claude/settings.json
   claude-display server          run the HTTP server in the foreground (debug)
@@ -25,14 +26,14 @@ Usage:
 `);
 }
 
-async function cmdOpen(quiet: boolean) {
+async function cmdOpen(opts: { quiet: boolean; force: boolean }) {
   mkdirSync(HOOK_DIR, { recursive: true });
   mkdirSync(DATA_ROOT, { recursive: true });
 
   const { port } = await ensureHttpServer();
   const sessionId = resolveClaudeSessionId();
   if (!sessionId) {
-    if (!quiet) {
+    if (!opts.quiet) {
       console.error(
         "[claude-display] couldn't resolve a Claude session id yet — hook may not have fired. Server is running on port " +
           port +
@@ -42,9 +43,47 @@ async function cmdOpen(quiet: boolean) {
     return;
   }
   registerSession(sessionId);
+  await registerSessionWithServer(port, sessionId);
+
   const url = `http://localhost:${port}/s/${sessionId}`;
-  openInBrowser(url);
-  if (!quiet) console.log(url);
+  const shouldOpen = opts.force || (await tabsAlive(port)) === 0;
+  if (shouldOpen) {
+    openInBrowser(url);
+    if (!opts.quiet) console.log(url);
+  } else if (!opts.quiet) {
+    console.log(
+      `[claude-display] tab already open — registered session ${sessionId.slice(0, 8)} silently. Use the topbar switcher to view it, or 'claude-display open --force' for a new window.`,
+    );
+  }
+}
+
+async function tabsAlive(port: number): Promise<number> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/api/presence`, {
+      signal: AbortSignal.timeout(800),
+    });
+    if (!r.ok) return 0;
+    const data = (await r.json()) as { tabs?: number };
+    return typeof data.tabs === "number" ? data.tabs : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function registerSessionWithServer(
+  port: number,
+  sessionId: string,
+): Promise<void> {
+  try {
+    await fetch(`http://127.0.0.1:${port}/api/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId, cwd: process.cwd() }),
+      signal: AbortSignal.timeout(1200),
+    });
+  } catch {
+    /* non-fatal — the session is still usable */
+  }
 }
 
 async function cmdUrl() {
@@ -143,7 +182,10 @@ async function main() {
   const [, , cmd, ...rest] = process.argv;
   switch (cmd) {
     case "open":
-      await cmdOpen(rest.includes("--quiet"));
+      await cmdOpen({
+        quiet: rest.includes("--quiet"),
+        force: rest.includes("--force"),
+      });
       return;
     case "url":
       await cmdUrl();

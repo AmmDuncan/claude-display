@@ -30,6 +30,15 @@ export type SessionMeta = {
   lastActivity: number;
   nextIndex: number;
   prunedCount: number;
+  cwd: string | null;
+  label: string | null;
+};
+
+export type SessionSummary = SessionMeta & {
+  pushCount: number;
+  lastPushTitle: string | null;
+  lastPushKind: string | null;
+  lastPushAt: number | null;
 };
 
 const META_FILE = "meta.json";
@@ -57,11 +66,17 @@ function ensureSession(id: string): SessionMeta {
       lastActivity: Date.now(),
       nextIndex: 1,
       prunedCount: 0,
+      cwd: null,
+      label: null,
     };
     writeFileSync(metaPath(id), JSON.stringify(meta, null, 2));
     return meta;
   }
-  return readMeta(id);
+  const existing = readMeta(id);
+  // Backfill new fields on older sessions.
+  if (existing.cwd === undefined) existing.cwd = null;
+  if (existing.label === undefined) existing.label = null;
+  return existing;
 }
 
 function readMeta(id: string): SessionMeta {
@@ -163,4 +178,42 @@ export function sessionExists(id: string): boolean {
 /** First-touch from CLI: ensure session exists without bumping activity. */
 export function registerSession(id: string): SessionMeta {
   return ensureSession(id);
+}
+
+export function updateSessionMeta(
+  id: string,
+  patch: Partial<Pick<SessionMeta, "cwd" | "label">>,
+): SessionMeta {
+  const meta = ensureSession(id);
+  if (patch.cwd !== undefined) meta.cwd = patch.cwd;
+  if (patch.label !== undefined) meta.label = patch.label;
+  writeMeta(meta);
+  return meta;
+}
+
+/**
+ * List every session with derived fields suitable for the index page —
+ * push count, latest push summary, and the meta. Sorted by lastActivity desc.
+ */
+export function listSessionSummaries(): SessionSummary[] {
+  if (!existsSync(SESSIONS_DIR)) return [];
+  const summaries: SessionSummary[] = [];
+  for (const id of readdirSync(SESSIONS_DIR)) {
+    try {
+      const meta = ensureSession(id);
+      const pushes = listPushes(id);
+      const last = pushes[pushes.length - 1];
+      summaries.push({
+        ...meta,
+        pushCount: pushes.length,
+        lastPushTitle: last?.title ?? null,
+        lastPushKind: last?.kind ?? null,
+        lastPushAt: last?.createdAt ?? null,
+      });
+    } catch {
+      /* skip corrupt session dir */
+    }
+  }
+  summaries.sort((a, b) => b.lastActivity - a.lastActivity);
+  return summaries;
 }

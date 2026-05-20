@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>claude-display · __SESSION_ID__</title>
+<title>claude-display · sessions</title>
 <link rel="preconnect" href="https://rsms.me/" />
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
 <link rel="stylesheet" href="/static/viewer.css" />
 <link rel="stylesheet" href="/static/index.css" />
 <script>
-  // Bootstrap theme before paint to avoid flash.
   (function () {
     try {
       var stored = localStorage.getItem("claude-display:theme");
@@ -17,8 +16,7 @@
       if (stored === "dark" || stored === "light") {
         theme = stored;
       } else if (window.matchMedia) {
-        var m = window.matchMedia("(prefers-color-scheme: light)");
-        theme = m.matches ? "light" : "dark";
+        theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
       } else {
         theme = "dark";
       }
@@ -32,25 +30,13 @@
 <body>
 <header class="topbar">
   <div class="topbar-left">
-    <a href="/" class="back-link" title="All sessions">← all sessions</a>
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"></span>
-      <span id="project-label">claude-display</span>
+      <span>claude-display</span>
     </div>
-    <div class="session-pill" id="session-pill">s/__SESSION_ID__</div>
-    <div class="count" id="push-count">0 pushes</div>
+    <div class="count" id="session-count">— sessions</div>
   </div>
   <div class="topbar-right">
-    <div class="live">
-      <span class="live-dot" id="live-dot" aria-hidden="true"></span>
-      <span id="live-label">connecting…</span>
-    </div>
-    <div class="switcher">
-      <button id="switcher-btn" class="switcher-btn" type="button" aria-haspopup="true" aria-expanded="false">
-        switch <span class="chev">▾</span>
-      </button>
-      <div id="switcher-menu" class="switcher-menu" role="menu" hidden></div>
-    </div>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle light / dark">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -58,27 +44,18 @@
   </div>
 </header>
 
-<main id="feed" class="feed">
-  <div id="pruned-marker" class="pruned-marker" hidden></div>
-  <div id="cards"></div>
-  <div id="empty-state" class="empty-state">
-    <h2>No pushes yet</h2>
-    <p>Anything Claude pushes from this session will appear here, newest at the bottom.</p>
+<main class="index-main">
+  <div class="page-head">
+    <h1>Sessions</h1>
+    <p class="page-deck">Every active Claude session that's registered with claude-display. Click any row to enter its feed.</p>
+  </div>
+  <ul id="session-list" class="session-list" aria-live="polite"></ul>
+  <div id="empty-state" class="index-empty" hidden>
+    <h2>No sessions yet</h2>
+    <p>Start a Claude Code chat and a session will appear here.</p>
   </div>
 </main>
 
-<button id="new-pill" class="new-pill" hidden>
-  <span class="pulse" aria-hidden="true"></span>
-  <span id="new-pill-text">1 new</span>
-  <span class="arrow" aria-hidden="true">↓</span>
-</button>
-
-<script>
-  window.__CLAUDE_DISPLAY__ = {
-    sessionId: "__SESSION_ID__",
-    port: "__PORT__",
-  };
-</script>
-<script src="/static/viewer.js"></script>
+<script src="/static/index.js"></script>
 </body>
 </html>

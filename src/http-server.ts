@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 import {
   appendPush,
   getSessionView,
+  listSessionSummaries,
   registerSession,
   sessionExists,
   sweepIdleSessions,
   touchSession,
+  updateSessionMeta,
 } from "./session-store.js";
 import { clearLockIfMine, writeLock } from "./server-manager.js";
 import { DEFAULT_PORT } from "./paths.js";
@@ -45,6 +47,11 @@ function renderViewerHtml(sessionId: string, port: number): string {
     .replace(/__PORT__/g, String(port));
 }
 
+function renderIndexHtml(port: number): string {
+  const tpl = readFileSync(resolve(CLIENT_DIR, "index.html"), "utf-8");
+  return tpl.replace(/__PORT__/g, String(port));
+}
+
 export function startHttpServer(): void {
   const port = Number(process.env.CLAUDE_DISPLAY_PORT) || DEFAULT_PORT;
   const app = express();
@@ -62,12 +69,31 @@ export function startHttpServer(): void {
   });
 
   app.get("/", (_req, res) => {
-    res
-      .status(200)
-      .type("text/plain")
-      .send(
-        "claude-display is running. Open /s/<session-id> for a session feed.",
-      );
+    res.type("text/html").send(renderIndexHtml(port));
+  });
+
+  app.get("/api/presence", (_req, res) => {
+    res.json({ tabs: clients.size });
+  });
+
+  app.get("/api/sessions", (_req, res) => {
+    res.json({ sessions: listSessionSummaries() });
+  });
+
+  app.post("/api/register", (req, res) => {
+    const { sessionId, cwd, label } = req.body ?? {};
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      res.status(400).json({ error: "sessionId required" });
+      return;
+    }
+    registerSession(sessionId);
+    const patch: { cwd?: string | null; label?: string | null } = {};
+    if (typeof cwd === "string") patch.cwd = cwd;
+    if (typeof label === "string") patch.label = label;
+    const meta = Object.keys(patch).length
+      ? updateSessionMeta(sessionId, patch)
+      : getSessionView(sessionId).meta;
+    res.json({ ok: true, meta });
   });
 
   app.get("/s/:id", (req: Request, res: Response) => {
