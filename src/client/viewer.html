@@ -12,18 +12,13 @@
   // Bootstrap theme before paint to avoid flash.
   (function () {
     try {
-      var stored = localStorage.getItem("claude-display:theme");
-      var theme;
-      if (stored === "dark" || stored === "light") {
-        theme = stored;
-      } else if (window.matchMedia) {
-        var m = window.matchMedia("(prefers-color-scheme: light)");
-        theme = m.matches ? "light" : "dark";
-      } else {
-        theme = "dark";
-      }
+      var stored = JSON.parse(localStorage.getItem("claude-display:config") || "null");
+      var preset = stored && stored.preset ? stored.preset : "paper";
+      var theme = stored && stored.theme ? stored.theme : "dark";
+      document.documentElement.setAttribute("data-preset", preset);
       document.documentElement.setAttribute("data-theme", theme);
     } catch (e) {
+      document.documentElement.setAttribute("data-preset", "paper");
       document.documentElement.setAttribute("data-theme", "dark");
     }
   })();
@@ -50,6 +45,11 @@
         switch <span class="chev">▾</span>
       </button>
       <div id="switcher-menu" class="switcher-menu" role="menu" hidden></div>
+    </div>
+    <div class="preset-group" role="group" aria-label="Theme preset">
+      <button class="preset-btn" data-preset="paper" type="button" aria-label="Paper preset" title="Paper · warm cream, amber accent"><span class="preset-swatch swatch-paper"></span></button>
+      <button class="preset-btn" data-preset="aurora" type="button" aria-label="Aurora preset" title="Aurora · violet glow"><span class="preset-swatch swatch-aurora"></span></button>
+      <button class="preset-btn" data-preset="slate" type="button" aria-label="Slate preset" title="Slate · cool neutral, cyan accent"><span class="preset-swatch swatch-slate"></span></button>
     </div>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle light / dark">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>

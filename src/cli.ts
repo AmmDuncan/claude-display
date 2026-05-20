@@ -20,6 +20,10 @@ Usage:
   claude-display open --quiet    same but no stdout (for SessionStart hook)
   claude-display open --force    always open a new browser tab regardless of presence
   claude-display url             print this session's URL
+  claude-display config                    print current { preset, theme }
+  claude-display config preset paper       set preset to paper | aurora | slate
+  claude-display config theme dark         set theme to light | dark
+  claude-display config preset aurora theme light   set both at once
   claude-display setup           install SessionStart hook + register MCP in ~/.claude/settings.json
   claude-display server          run the HTTP server in the foreground (debug)
   claude-display version
@@ -231,6 +235,37 @@ function registerMcp(mcpEntry: string): void {
   writeFileSync(userConfigPath, JSON.stringify(config, null, 2));
 }
 
+async function cmdConfig(args: string[]) {
+  const { port } = await ensureHttpServer();
+  if (args.length === 0) {
+    const r = await fetch(`http://127.0.0.1:${port}/api/config`);
+    const data = (await r.json()) as { config: unknown };
+    console.log(JSON.stringify(data.config, null, 2));
+    return;
+  }
+  const body: Record<string, string> = {};
+  for (let i = 0; i < args.length; i += 2) {
+    const key = args[i];
+    const val = args[i + 1];
+    if (!key || !val) continue;
+    if (key === "preset" || key === "theme") body[key] = val;
+  }
+  if (Object.keys(body).length === 0) {
+    console.error(
+      "usage: claude-display config [preset paper|aurora|slate] [theme light|dark]",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const r = await fetch(`http://127.0.0.1:${port}/api/config`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = (await r.json()) as { config: unknown };
+  console.log(JSON.stringify(data.config, null, 2));
+}
+
 async function cmdServer() {
   const { startHttpServer } = await import("./http-server.js");
   startHttpServer();
@@ -261,6 +296,9 @@ async function main() {
       return;
     case "server":
       await cmdServer();
+      return;
+    case "config":
+      await cmdConfig(rest);
       return;
     case "version":
     case "--version":

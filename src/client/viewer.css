@@ -4,9 +4,13 @@
    reference `var(--ds-ink)` etc. and theme for free.
    ============================================================ */
 
-:root,
-:root[data-theme="light"] {
-  /* warmer + dimmer than #fafafa — less screen-glare */
+/* =========================================================================
+   Design tokens — three presets × two modes.
+   Active = [data-preset][data-theme] on :root, both set by viewer.js bootstrap.
+   ========================================================================= */
+
+/* --- SLATE (light) --- cool neutral, warm putty page */
+:root[data-preset="slate"][data-theme="light"] {
   --ds-bg: #ecebe5;
   --ds-bg-elev: #f6f4ee;
   --ds-surface: #f6f4ee;
@@ -22,17 +26,18 @@
   --ds-success: #0f9d6b;
   --ds-danger: #d64545;
   --ds-shadow-sm: 0 1px 2px rgba(40, 30, 10, 0.05);
-  --ds-shadow-md: 0 1px 2px rgba(40, 30, 10, 0.05),
-    0 16px 32px rgba(40, 30, 10, 0.08);
+  --ds-shadow-md: 0 1px 2px rgba(40, 30, 10, 0.05), 0 16px 32px rgba(40, 30, 10, 0.08);
   --ds-code-bg: #1c1b18;
   --ds-code-ink: #f1ede1;
   --ds-topbar-bg: rgba(236, 235, 229, 0.85);
   --ds-topbar-border: rgba(40, 30, 10, 0.1);
   --ds-pattern-dot: rgba(40, 30, 10, 0.085);
+  --ds-canvas-bg-image: none;
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
+/* --- SLATE (dark) --- cool neutral, cyan accent */
+:root[data-preset="slate"][data-theme="dark"] {
   --ds-bg: #0c0d10;
   --ds-bg-elev: #15171c;
   --ds-surface: #15171c;
@@ -42,21 +47,158 @@
   --ds-muted: #9ca3af;
   --ds-line: #23262d;
   --ds-line-soft: #1c1f25;
-  --ds-accent: #7aa8ff;
-  --ds-accent-soft: rgba(122, 168, 255, 0.16);
-  --ds-accent-ink: #0a0d14;
+  --ds-accent: #7dd3fc;
+  --ds-accent-soft: rgba(125, 211, 252, 0.16);
+  --ds-accent-ink: #07242e;
   --ds-success: #34d399;
   --ds-danger: #f87171;
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --ds-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4),
-    0 12px 28px rgba(0, 0, 0, 0.45);
+  --ds-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(0, 0, 0, 0.45);
   --ds-code-bg: #07080a;
   --ds-code-ink: #f5f5f5;
   --ds-topbar-bg: rgba(20, 22, 27, 0.8);
   --ds-topbar-border: rgba(255, 255, 255, 0.06);
   --ds-pattern-dot: rgba(255, 255, 255, 0.045);
+  --ds-canvas-bg-image: none;
   color-scheme: dark;
 }
+
+/* --- PAPER (light) --- pitstop warm cream + deep amber */
+:root[data-preset="paper"][data-theme="light"] {
+  --ds-bg: #f4efe2;
+  --ds-bg-elev: #f8f3e6;
+  --ds-surface: #faf6ee;
+  --ds-surface-soft: #f0ead9;
+  --ds-ink: #2a261e;
+  --ds-ink-soft: #524b3c;
+  --ds-muted: #756c57;
+  --ds-line: #d5cdb6;
+  --ds-line-soft: #e3dcc6;
+  --ds-accent: #c97a1c;
+  --ds-accent-soft: #f7e8c0;
+  --ds-accent-ink: #ffffff;
+  --ds-success: #2d8a4f;
+  --ds-danger: #c43e2f;
+  --ds-shadow-sm: 0 1px 2px rgba(70, 50, 10, 0.06);
+  --ds-shadow-md: 0 1px 2px rgba(70, 50, 10, 0.06), 0 18px 36px rgba(70, 50, 10, 0.1);
+  --ds-code-bg: #2a261e;
+  --ds-code-ink: #eae5d5;
+  --ds-topbar-bg: rgba(244, 239, 226, 0.86);
+  --ds-topbar-border: rgba(70, 50, 10, 0.12);
+  --ds-pattern-dot: rgba(70, 50, 10, 0.085);
+  --ds-canvas-bg-image: none;
+  color-scheme: light;
+}
+
+/* --- PAPER (dark) --- pitstop warm paper, single amber accent, layered depth */
+:root[data-preset="paper"][data-theme="dark"] {
+  --ds-bg: #1c1b18;
+  --ds-bg-elev: #25241f;
+  --ds-surface: #25241f;
+  --ds-surface-soft: #20201c;
+  --ds-ink: #ede9e0;
+  --ds-ink-soft: #bbb5a8;
+  --ds-muted: #888273;
+  --ds-line: #423f37;
+  --ds-line-soft: #312f29;
+  --ds-accent: #f4bf5e;
+  --ds-accent-soft: #3d3322;
+  --ds-accent-ink: #1f1d18;
+  --ds-success: #74ce9a;
+  --ds-danger: #e9836b;
+  --ds-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --ds-shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.55), 0 18px 38px rgba(0, 0, 0, 0.45);
+  --ds-code-bg: #161514;
+  --ds-code-ink: #eae5d5;
+  --ds-topbar-bg: rgba(28, 27, 24, 0.85);
+  --ds-topbar-border: rgba(255, 255, 255, 0.06);
+  --ds-pattern-dot: rgba(255, 255, 255, 0.04);
+  --ds-canvas-bg-image: none;
+  color-scheme: dark;
+}
+
+/* --- AURORA (light) --- soft lavender canvas, violet accent */
+:root[data-preset="aurora"][data-theme="light"] {
+  --ds-bg: #f5f3fa;
+  --ds-bg-elev: #fafaff;
+  --ds-surface: #ffffff;
+  --ds-surface-soft: #f0eef7;
+  --ds-ink: #1c1d24;
+  --ds-ink-soft: #4a4d5a;
+  --ds-muted: #7a7d8c;
+  --ds-line: #e1dff0;
+  --ds-line-soft: #ebe9f5;
+  --ds-accent: #6d4eff;
+  --ds-accent-soft: #ebe7ff;
+  --ds-accent-ink: #ffffff;
+  --ds-success: #19a473;
+  --ds-danger: #e25555;
+  --ds-shadow-sm: 0 1px 2px rgba(60, 50, 120, 0.05);
+  --ds-shadow-md: 0 1px 2px rgba(60, 50, 120, 0.05), 0 18px 36px rgba(60, 50, 120, 0.08);
+  --ds-code-bg: #1c1d24;
+  --ds-code-ink: #ebe7ff;
+  --ds-topbar-bg: rgba(245, 243, 250, 0.85);
+  --ds-topbar-border: rgba(60, 50, 120, 0.1);
+  --ds-pattern-dot: rgba(109, 78, 255, 0.07);
+  --ds-canvas-bg-image:
+    radial-gradient(60% 40% at 0% 0%, rgba(109, 78, 255, 0.08), transparent 60%),
+    radial-gradient(60% 40% at 100% 100%, rgba(70, 200, 255, 0.06), transparent 60%);
+  color-scheme: light;
+}
+
+/* --- AURORA (dark) --- deep canvas with violet/blue glow halos */
+:root[data-preset="aurora"][data-theme="dark"] {
+  --ds-bg: #0d0f14;
+  --ds-bg-elev: #14171f;
+  --ds-surface: #161a23;
+  --ds-surface-soft: #11141a;
+  --ds-ink: #e7e9ee;
+  --ds-ink-soft: #b9bdc6;
+  --ds-muted: #8b909a;
+  --ds-line: rgba(143, 160, 200, 0.14);
+  --ds-line-soft: rgba(143, 160, 200, 0.08);
+  --ds-accent: #b8c8ff;
+  --ds-accent-soft: rgba(140, 170, 255, 0.12);
+  --ds-accent-ink: #0d0f14;
+  --ds-success: #6ee7b7;
+  --ds-danger: #ff9d9d;
+  --ds-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --ds-shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 0 0 1px rgba(123, 97, 255, 0.06), 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 80px -20px rgba(123, 97, 255, 0.25);
+  --ds-code-bg: #07080a;
+  --ds-code-ink: #e7e9ee;
+  --ds-topbar-bg: rgba(13, 15, 20, 0.82);
+  --ds-topbar-border: rgba(143, 160, 200, 0.14);
+  --ds-pattern-dot: rgba(140, 170, 255, 0.06);
+  --ds-canvas-bg-image:
+    radial-gradient(60% 40% at 0% 0%, rgba(123, 97, 255, 0.10), transparent 60%),
+    radial-gradient(50% 40% at 100% 100%, rgba(70, 200, 255, 0.06), transparent 60%);
+  color-scheme: dark;
+}
+
+/* Default = paper / dark (when bootstrap hasn't run yet) */
+:root:not([data-preset]):not([data-theme]),
+:root[data-preset="paper"]:not([data-theme]),
+:root:not([data-preset])[data-theme="dark"] {
+  --ds-bg: #1c1b18;
+  --ds-bg-elev: #25241f;
+  --ds-surface: #25241f;
+  --ds-surface-soft: #20201c;
+  --ds-ink: #ede9e0;
+  --ds-ink-soft: #bbb5a8;
+  --ds-muted: #888273;
+  --ds-line: #423f37;
+  --ds-line-soft: #312f29;
+  --ds-accent: #f4bf5e;
+  --ds-accent-soft: #3d3322;
+  --ds-accent-ink: #1f1d18;
+  --ds-shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.55), 0 18px 38px rgba(0, 0, 0, 0.45);
+  --ds-topbar-bg: rgba(28, 27, 24, 0.85);
+  --ds-topbar-border: rgba(255, 255, 255, 0.06);
+  --ds-pattern-dot: rgba(255, 255, 255, 0.04);
+  --ds-canvas-bg-image: none;
+  color-scheme: dark;
+}
+
 
 /* ============================================================
    Reset + page
@@ -84,13 +226,12 @@ html, body {
 
 body {
   min-height: 100vh;
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    var(--ds-pattern-dot) 1px,
-    transparent 0
-  );
-  background-size: 22px 22px;
+  background-image:
+    var(--ds-canvas-bg-image, none),
+    radial-gradient(circle at 1px 1px, var(--ds-pattern-dot) 1px, transparent 0);
+  background-size: auto, 22px 22px;
   background-attachment: fixed;
+  background-repeat: no-repeat, repeat;
 }
 
 /* ============================================================

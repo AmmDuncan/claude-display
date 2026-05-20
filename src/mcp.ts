@@ -23,6 +23,7 @@ function openUrlInBrowser(url: string): void {
 
 const TOOL_PUSH = "display_push";
 const TOOL_OPEN = "display_open";
+const TOOL_CONFIG = "display_config";
 
 const inputSchema = {
   type: "object" as const,
@@ -94,6 +95,27 @@ async function main() {
           additionalProperties: false,
         },
       },
+      {
+        name: TOOL_CONFIG,
+        description:
+          "Update the claude-display viewer's preset and/or theme. Changes apply live across every open tab (SSE-broadcast) and persist. Presets: `paper` (pitstop-style warm canvas, single amber accent, layered shadow depth — the default), `aurora` (deep canvas with soft violet/blue glow halos), `slate` (cool slate canvas with cyan accent). Themes: `light` or `dark`. Pass only the field(s) you want to change. Call this when the user asks to change the look, switch palettes, or pick a different preset.",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            preset: {
+              type: "string",
+              enum: ["paper", "aurora", "slate"],
+              description: "Visual preset to apply globally.",
+            },
+            theme: {
+              type: "string",
+              enum: ["light", "dark"],
+              description: "Light or dark mode.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
     ],
   }));
 
@@ -120,6 +142,30 @@ async function main() {
           {
             type: "text" as const,
             text: `opened a new tab → ${url}`,
+          },
+        ],
+      };
+    }
+
+    if (req.params.name === TOOL_CONFIG) {
+      const args = (req.params.arguments ?? {}) as {
+        preset?: string;
+        theme?: string;
+      };
+      const body: Record<string, string> = {};
+      if (args.preset) body.preset = args.preset;
+      if (args.theme) body.theme = args.theme;
+      const r = await fetch(`http://127.0.0.1:${port}/api/config`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await r.json()) as { config?: unknown };
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `display config now ${JSON.stringify(data.config)}`,
           },
         ],
       };

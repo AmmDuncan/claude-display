@@ -157,6 +157,43 @@
   margin: 0;
 }
 
+/* Preset picker — three swatch buttons in the topbar */
+.preset-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-radius: 10px;
+}
+.preset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  padding: 0;
+  transition: background 120ms ease, transform 120ms ease;
+}
+.preset-btn:hover { background: var(--ds-surface-soft); }
+.preset-btn:active { transform: scale(0.95); }
+.preset-btn.active { background: var(--ds-accent-soft); }
+.preset-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: block;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.swatch-paper { background: linear-gradient(135deg, #f4bf5e, #c97a1c); }
+.swatch-aurora { background: linear-gradient(135deg, #b8c8ff, #6d4eff); }
+.swatch-slate { background: linear-gradient(135deg, #7dd3fc, #2f5fd1); }
+
 /* Back link in viewer */
 .back-link {
   display: inline-flex;

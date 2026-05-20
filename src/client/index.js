@@ -5,27 +5,56 @@
   const emptyEl = document.getElementById("empty-state");
   const countEl = document.getElementById("session-count");
   const themeToggleEl = document.getElementById("theme-toggle");
+  const presetBtnEls = Array.from(document.querySelectorAll(".preset-btn"));
 
-  const THEME_KEY = "claude-display:theme";
+  const CONFIG_KEY = "claude-display:config";
   const LAST_VISITED_KEY = "claude-display:last-visited";
+  const PRESETS = ["paper", "aurora", "slate"];
 
   function currentTheme() {
     return document.documentElement.getAttribute("data-theme") || "dark";
   }
+  function currentPreset() {
+    return document.documentElement.getAttribute("data-preset") || "paper";
+  }
 
-  function applyTheme(theme) {
-    const t = theme === "light" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", t);
+  function syncPresetButtons(active) {
+    presetBtnEls.forEach((b) => b.classList.toggle("active", b.dataset.preset === active));
+  }
+
+  function applyConfig(patch, opts) {
+    const theme = patch.theme === "light" || patch.theme === "dark" ? patch.theme : currentTheme();
+    const preset = PRESETS.includes(patch.preset) ? patch.preset : currentPreset();
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-preset", preset);
+    syncPresetButtons(preset);
     try {
-      localStorage.setItem(THEME_KEY, t);
-    } catch (e) {
-      /* ignore */
+      localStorage.setItem(CONFIG_KEY, JSON.stringify({ preset, theme }));
+    } catch {}
+    if (!opts || !opts.skipServer) {
+      fetch("/api/config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ preset, theme }),
+      }).catch(() => {});
     }
   }
 
   themeToggleEl.addEventListener("click", () => {
-    applyTheme(currentTheme() === "dark" ? "light" : "dark");
+    applyConfig({ theme: currentTheme() === "dark" ? "light" : "dark" });
   });
+  presetBtnEls.forEach((btn) => {
+    btn.addEventListener("click", () => applyConfig({ preset: btn.dataset.preset }));
+  });
+  syncPresetButtons(currentPreset());
+
+  // Hydrate from server on load — in case another tab changed config.
+  fetch("/api/config")
+    .then((r) => r.json())
+    .then((d) => {
+      if (d && d.config) applyConfig(d.config, { skipServer: true });
+    })
+    .catch(() => {});
 
   function readLastVisited() {
     try {

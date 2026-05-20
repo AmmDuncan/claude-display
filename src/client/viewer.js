@@ -13,13 +13,102 @@
   const newPillEl = document.getElementById("new-pill");
   const newPillText = document.getElementById("new-pill-text");
   const themeToggleEl = document.getElementById("theme-toggle");
+  const presetBtnEls = Array.from(document.querySelectorAll(".preset-btn"));
   const switcherBtnEl = document.getElementById("switcher-btn");
   const switcherMenuEl = document.getElementById("switcher-menu");
   const projectLabelEl = document.getElementById("project-label");
 
   const BOTTOM_THRESHOLD_PX = 220;
-  const THEME_KEY = "claude-display:theme";
+  const CONFIG_KEY = "claude-display:config";
   const LAST_VISITED_KEY = "claude-display:last-visited";
+  const PRESETS = ["paper", "aurora", "slate"];
+
+  /* The token block injected into every iframe wrapper — six combos so
+     pushed HTML themes correctly regardless of host preset/mode. */
+  const PRESET_TOKENS_CSS = `
+:root[data-preset="paper"][data-theme="light"] {
+  --ds-bg:#f4efe2;--ds-bg-elev:#f8f3e6;--ds-surface:#faf6ee;--ds-surface-soft:#f0ead9;
+  --ds-ink:#2a261e;--ds-ink-soft:#524b3c;--ds-muted:#756c57;
+  --ds-line:#d5cdb6;--ds-line-soft:#e3dcc6;
+  --ds-accent:#c97a1c;--ds-accent-soft:#f7e8c0;--ds-accent-ink:#fff;
+  --ds-code-bg:#2a261e;--ds-code-ink:#eae5d5;
+  --ds-shadow-md:0 1px 2px rgba(70,50,10,.06),0 18px 36px rgba(70,50,10,.1);
+  color-scheme:light;
+}
+:root[data-preset="paper"][data-theme="dark"] {
+  --ds-bg:#1c1b18;--ds-bg-elev:#25241f;--ds-surface:#25241f;--ds-surface-soft:#20201c;
+  --ds-ink:#ede9e0;--ds-ink-soft:#bbb5a8;--ds-muted:#888273;
+  --ds-line:#423f37;--ds-line-soft:#312f29;
+  --ds-accent:#f4bf5e;--ds-accent-soft:#3d3322;--ds-accent-ink:#1f1d18;
+  --ds-code-bg:#161514;--ds-code-ink:#eae5d5;
+  --ds-shadow-md:inset 0 1px 0 rgba(255,255,255,.045),0 1px 2px rgba(0,0,0,.55),0 18px 38px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+:root[data-preset="aurora"][data-theme="light"] {
+  --ds-bg:#f5f3fa;--ds-bg-elev:#fafaff;--ds-surface:#fff;--ds-surface-soft:#f0eef7;
+  --ds-ink:#1c1d24;--ds-ink-soft:#4a4d5a;--ds-muted:#7a7d8c;
+  --ds-line:#e1dff0;--ds-line-soft:#ebe9f5;
+  --ds-accent:#6d4eff;--ds-accent-soft:#ebe7ff;--ds-accent-ink:#fff;
+  --ds-code-bg:#1c1d24;--ds-code-ink:#ebe7ff;
+  --ds-shadow-md:0 1px 2px rgba(60,50,120,.05),0 18px 36px rgba(60,50,120,.08);
+  color-scheme:light;
+}
+:root[data-preset="aurora"][data-theme="dark"] {
+  --ds-bg:#0d0f14;--ds-bg-elev:#14171f;--ds-surface:#161a23;--ds-surface-soft:#11141a;
+  --ds-ink:#e7e9ee;--ds-ink-soft:#b9bdc6;--ds-muted:#8b909a;
+  --ds-line:rgba(143,160,200,.14);--ds-line-soft:rgba(143,160,200,.08);
+  --ds-accent:#b8c8ff;--ds-accent-soft:rgba(140,170,255,.12);--ds-accent-ink:#0d0f14;
+  --ds-code-bg:#07080a;--ds-code-ink:#e7e9ee;
+  --ds-shadow-md:inset 0 1px 0 rgba(255,255,255,.045),0 0 0 1px rgba(123,97,255,.06),0 24px 60px rgba(0,0,0,.55),0 0 80px -20px rgba(123,97,255,.25);
+  color-scheme:dark;
+}
+:root[data-preset="slate"][data-theme="light"] {
+  --ds-bg:#ecebe5;--ds-bg-elev:#f6f4ee;--ds-surface:#f6f4ee;--ds-surface-soft:#ecebe3;
+  --ds-ink:#1a1916;--ds-ink-soft:#34322d;--ds-muted:#76746c;
+  --ds-line:#d8d5cb;--ds-line-soft:#e1ddd2;
+  --ds-accent:#2f5fd1;--ds-accent-soft:#e4ebfb;--ds-accent-ink:#fff;
+  --ds-code-bg:#1c1b18;--ds-code-ink:#f1ede1;
+  --ds-shadow-md:0 1px 2px rgba(40,30,10,.05),0 16px 32px rgba(40,30,10,.08);
+  color-scheme:light;
+}
+:root[data-preset="slate"][data-theme="dark"] {
+  --ds-bg:#0c0d10;--ds-bg-elev:#15171c;--ds-surface:#15171c;--ds-surface-soft:#1c1f25;
+  --ds-ink:#f5f5f5;--ds-ink-soft:#d4d4d8;--ds-muted:#9ca3af;
+  --ds-line:#23262d;--ds-line-soft:#1c1f25;
+  --ds-accent:#7dd3fc;--ds-accent-soft:rgba(125,211,252,.16);--ds-accent-ink:#07242e;
+  --ds-code-bg:#07080a;--ds-code-ink:#f5f5f5;
+  --ds-shadow-md:0 1px 2px rgba(0,0,0,.4),0 12px 28px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+`;
+
+  /* Semantic chips — universal across presets. Authors use:
+       <span class="chip bug">BUG</span> / .ux / .polish / .ok / .info
+     to get accessible, glow-haloed badges that work in both modes. */
+  const SEMANTIC_CHIPS_CSS = `
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  padding: 3px 9px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+:root[data-theme="light"] .chip.bug { background:#fef2f2; color:#b91c1c; border-color:#fecaca; box-shadow:0 0 12px -6px rgba(185,28,28,.5); }
+:root[data-theme="dark"]  .chip.bug { background:#2a1518; color:#ffaba0; border-color:#4a1f25; box-shadow:0 0 12px -4px rgba(255,119,119,.45); }
+:root[data-theme="light"] .chip.ux  { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; box-shadow:0 0 12px -6px rgba(29,78,216,.45); }
+:root[data-theme="dark"]  .chip.ux  { background:#15212b; color:#93cef0; border-color:#1f3848; box-shadow:0 0 12px -4px rgba(140,170,255,.4); }
+:root[data-theme="light"] .chip.polish { background:#faf5ff; color:#7c3aed; border-color:#e9d5ff; box-shadow:0 0 12px -6px rgba(124,58,237,.45); }
+:root[data-theme="dark"]  .chip.polish { background:#1b2230; color:#b8bfd2; border-color:#2a334b; box-shadow:0 0 12px -4px rgba(186,130,255,.4); }
+:root[data-theme="light"] .chip.ok  { background:#f0fdf4; color:#028043; border-color:#bbf7d0; box-shadow:0 0 12px -6px rgba(2,128,67,.45); }
+:root[data-theme="dark"]  .chip.ok  { background:#052e16; color:#6ee7b7; border-color:#134e29; box-shadow:0 0 12px -4px rgba(110,231,183,.4); }
+:root[data-theme="light"] .chip.info { background:#ecfeff; color:#0e7490; border-color:#a5f3fc; box-shadow:0 0 12px -6px rgba(14,116,144,.45); }
+:root[data-theme="dark"]  .chip.info { background:#0a1c22; color:#67e8f9; border-color:#155060; box-shadow:0 0 12px -4px rgba(103,232,249,.4); }
+.chip.accent { background:var(--ds-accent-soft); color:var(--ds-accent); border-color:transparent; box-shadow:0 0 12px -4px color-mix(in srgb, var(--ds-accent) 40%, transparent); }
+`;
 
   let unreadCount = 0;
   let totalPushes = 0;
@@ -54,26 +143,43 @@
   function currentTheme() {
     return document.documentElement.getAttribute("data-theme") || "dark";
   }
+  function currentPreset() {
+    return document.documentElement.getAttribute("data-preset") || "paper";
+  }
 
-  function applyTheme(theme, opts) {
-    const t = theme === "light" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", t);
+  function applyConfig(patch, opts) {
+    const theme = patch.theme === "light" || patch.theme === "dark"
+      ? patch.theme
+      : currentTheme();
+    const preset = PRESETS.includes(patch.preset) ? patch.preset : currentPreset();
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-preset", preset);
+    syncPresetButtons(preset);
     if (!opts || !opts.skipPersist) {
       try {
-        localStorage.setItem(THEME_KEY, t);
+        localStorage.setItem(CONFIG_KEY, JSON.stringify({ preset, theme }));
       } catch (e) {
         /* ignore */
       }
     }
-    broadcastThemeToIframes(t);
+    broadcastConfigToIframes({ preset, theme });
+    if (!opts || !opts.skipServer) {
+      pushConfigToServer({ preset, theme });
+    }
   }
 
-  function broadcastThemeToIframes(theme) {
+  function syncPresetButtons(active) {
+    presetBtnEls.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.preset === active);
+    });
+  }
+
+  function broadcastConfigToIframes(cfg) {
     iframes.forEach((iframe) => {
       try {
         iframe.contentWindow &&
           iframe.contentWindow.postMessage(
-            { type: "claude-display:theme", theme },
+            { type: "claude-display:config", ...cfg },
             "*",
           );
       } catch (e) {
@@ -82,22 +188,27 @@
     });
   }
 
-  themeToggleEl.addEventListener("click", () => {
-    applyTheme(currentTheme() === "dark" ? "light" : "dark");
-  });
-
-  // Track system changes only if user hasn't set a preference.
-  if (window.matchMedia) {
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
-    mq.addEventListener("change", (e) => {
-      try {
-        if (localStorage.getItem(THEME_KEY)) return;
-      } catch (err) {
-        return;
-      }
-      applyTheme(e.matches ? "light" : "dark", { skipPersist: true });
-    });
+  async function pushConfigToServer(cfg) {
+    try {
+      await fetch("/api/config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(cfg),
+      });
+    } catch {
+      /* server will catch up via SSE on next event */
+    }
   }
+
+  themeToggleEl.addEventListener("click", () => {
+    applyConfig({ theme: currentTheme() === "dark" ? "light" : "dark" });
+  });
+  presetBtnEls.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      applyConfig({ preset: btn.dataset.preset });
+    });
+  });
+  syncPresetButtons(currentPreset());
 
   /* ============================================================
      Scroll helpers
@@ -245,11 +356,19 @@
        - write their own <style> and override anything.
      ============================================================ */
   function wrapPushedHtml(html, theme, pushId) {
-    const trimmed = (html || "").trimStart().toLowerCase();
-    if (trimmed.startsWith("<!doctype") || trimmed.startsWith("<html")) {
-      return injectBridge(html, theme, pushId);
+    // Authors sometimes wrap payloads in <![CDATA[ ... ]]> (treating html
+    // like CDATA-in-XML). Strip the XML-ism before doing anything else —
+    // otherwise the iframe renders the CDATA tags as visible text.
+    let cleaned = (html || "").trim();
+    if (cleaned.startsWith("<![CDATA[") && cleaned.endsWith("]]>")) {
+      cleaned = cleaned.slice(9, -3).trim();
     }
-    return buildDefaultWrapper(html, theme, pushId);
+    const preset = currentPreset();
+    const lower = cleaned.toLowerCase();
+    if (lower.startsWith("<!doctype") || lower.startsWith("<html")) {
+      return injectBridge(cleaned, theme, preset, pushId);
+    }
+    return buildDefaultWrapper(cleaned, theme, preset, pushId);
   }
 
   function selfMeasureScript(pushId) {
@@ -260,52 +379,17 @@
     );
   }
 
-  function buildDefaultWrapper(body, theme, pushId) {
+  function buildDefaultWrapper(body, theme, preset, pushId) {
     return `<!DOCTYPE html>
-<html data-theme="${theme}">
+<html data-theme="${theme}" data-preset="${preset}">
 <head>
 <meta charset="utf-8" />
 <base target="_blank" />
 <link rel="preconnect" href="https://rsms.me/" />
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
 <style>
-:root,
-:root[data-theme="light"] {
-  --ds-bg: #ecebe5;
-  --ds-bg-elev: #f6f4ee;
-  --ds-surface: #f6f4ee;
-  --ds-surface-soft: #ecebe3;
-  --ds-ink: #1a1916;
-  --ds-ink-soft: #34322d;
-  --ds-muted: #76746c;
-  --ds-line: #d8d5cb;
-  --ds-accent: #2f5fd1;
-  --ds-accent-soft: #e4ebfb;
-  --ds-success: #0f9d6b;
-  --ds-danger: #d64545;
-  --ds-code-bg: #1c1b18;
-  --ds-code-ink: #f1ede1;
-  --ds-pattern-dot: rgba(40, 30, 10, 0.085);
-  color-scheme: light;
-}
-:root[data-theme="dark"] {
-  --ds-bg: #0c0d10;
-  --ds-bg-elev: #15171c;
-  --ds-surface: #15171c;
-  --ds-surface-soft: #1c1f25;
-  --ds-ink: #f5f5f5;
-  --ds-ink-soft: #d4d4d8;
-  --ds-muted: #9ca3af;
-  --ds-line: #23262d;
-  --ds-accent: #7aa8ff;
-  --ds-accent-soft: rgba(122, 168, 255, 0.16);
-  --ds-success: #34d399;
-  --ds-danger: #f87171;
-  --ds-code-bg: #07080a;
-  --ds-code-ink: #f5f5f5;
-  --ds-pattern-dot: rgba(255, 255, 255, 0.045);
-  color-scheme: dark;
-}
+${PRESET_TOKENS_CSS}
+${SEMANTIC_CHIPS_CSS}
 *, *::before, *::after { box-sizing: border-box; }
 html, body {
   margin: 0;
@@ -438,12 +522,21 @@ img { max-width: 100%; height: auto; border-radius: 10px; }
 ${body}
 <script>
 (function(){
-  function apply(theme){
-    document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "dark");
-    window.__claudeDisplayTheme = theme;
+  function apply(cfg){
+    if (!cfg) return;
+    if (cfg.theme === "light" || cfg.theme === "dark") {
+      document.documentElement.setAttribute("data-theme", cfg.theme);
+      window.__claudeDisplayTheme = cfg.theme;
+    }
+    if (cfg.preset === "paper" || cfg.preset === "aurora" || cfg.preset === "slate") {
+      document.documentElement.setAttribute("data-preset", cfg.preset);
+      window.__claudeDisplayPreset = cfg.preset;
+    }
   }
   window.addEventListener("message", function(e){
-    if (e && e.data && e.data.type === "claude-display:theme") apply(e.data.theme);
+    if (!e || !e.data) return;
+    if (e.data.type === "claude-display:config") apply(e.data);
+    if (e.data.type === "claude-display:theme") apply({ theme: e.data.theme });
   });
 })();
 </script>
@@ -452,13 +545,13 @@ ${body}
 </html>`;
   }
 
-  function injectBridge(html, theme, pushId) {
-    const themeScript =
-      '<script>(function(){function a(t){document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark");window.__claudeDisplayTheme=t}a(' +
-      JSON.stringify(theme) +
-      ');window.addEventListener("message",function(e){if(e&&e.data&&e.data.type==="claude-display:theme")a(e.data.theme)})})();</script>';
+  function injectBridge(html, theme, preset, pushId) {
+    const configScript =
+      "<script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}}a(" +
+      JSON.stringify({ theme, preset }) +
+      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='claude-display:config')a(e.data);if(e.data.type==='claude-display:theme')a({theme:e.data.theme})})})();</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
-    const combined = themeScript + measureScript;
+    const combined = configScript + measureScript;
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, combined + "</body>");
     return html + combined;
   }
@@ -519,7 +612,21 @@ ${body}
 
   function connectSse() {
     const es = new EventSource("/s/" + sessionId + "/events");
-    es.addEventListener("hello", () => updateLive(true));
+    es.addEventListener("hello", (e) => {
+      updateLive(true);
+      try {
+        const data = JSON.parse(e.data);
+        if (data && data.config) {
+          applyConfig(data.config, { skipServer: true });
+        }
+      } catch {}
+    });
+    es.addEventListener("config", (e) => {
+      try {
+        const cfg = JSON.parse(e.data);
+        applyConfig(cfg, { skipServer: true });
+      } catch {}
+    });
     es.addEventListener("push", (e) => {
       try {
         const push = JSON.parse(e.data);

@@ -12,6 +12,7 @@ import {
   touchSession,
   updateSessionMeta,
 } from "./session-store.js";
+import { readConfig, writeConfig } from "./config-store.js";
 import { clearLockIfMine, writeLock } from "./server-manager.js";
 import { DEFAULT_PORT } from "./paths.js";
 
@@ -36,6 +37,17 @@ function broadcast(sessionId: string, event: string, payload: unknown): void {
       } catch {
         /* client gone — cleanup on next disconnect */
       }
+    }
+  }
+}
+
+function broadcastAll(event: string, payload: unknown): void {
+  const data = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const c of clients.values()) {
+    try {
+      c.res.write(data);
+    } catch {
+      /* swallow */
     }
   }
 }
@@ -80,6 +92,20 @@ export function startHttpServer(): void {
     res.json({ sessions: listSessionSummaries() });
   });
 
+  app.get("/api/config", (_req, res) => {
+    res.json({ config: readConfig() });
+  });
+
+  app.post("/api/config", (req, res) => {
+    const { preset, theme } = req.body ?? {};
+    const patch: { preset?: string; theme?: string } = {};
+    if (typeof preset === "string") patch.preset = preset;
+    if (typeof theme === "string") patch.theme = theme;
+    const next = writeConfig(patch as { preset?: never; theme?: never });
+    broadcastAll("config", next);
+    res.json({ config: next });
+  });
+
   app.post("/api/register", (req, res) => {
     const { sessionId, cwd, label } = req.body ?? {};
     if (typeof sessionId !== "string" || !sessionId.trim()) {
@@ -119,7 +145,9 @@ export function startHttpServer(): void {
       "X-Accel-Buffering": "no",
     });
     res.flushHeaders();
-    res.write(`event: hello\ndata: ${JSON.stringify({ sessionId: id })}\n\n`);
+    res.write(
+      `event: hello\ndata: ${JSON.stringify({ sessionId: id, config: readConfig() })}\n\n`,
+    );
 
     const client: SseClient = { id: nextClientId++, sessionId: id, res };
     clients.set(client.id, client);
