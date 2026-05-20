@@ -326,6 +326,8 @@
     del.addEventListener("click", async (e) => {
       e.stopPropagation();
       e.preventDefault();
+      const label = push.title ? `"${push.title}"` : `push #${push.index}`;
+      if (!window.confirm(`Delete ${label}? This can't be undone.`)) return;
       try {
         await fetch(
           "/api/sessions/" +
@@ -334,7 +336,6 @@
             encodeURIComponent(push.id),
           { method: "DELETE" },
         );
-        // Optimistic remove — SSE 'remove' will also fire and be a no-op.
         removeCardFromDom(push.id);
       } catch (err) {
         console.error("[claude-display] delete failed", err);
