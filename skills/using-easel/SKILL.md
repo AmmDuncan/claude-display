@@ -35,6 +35,14 @@ Triggers are **content-shape**, not user-phrasing. If the answer would be a wall
 
 Reply in chat with **one line**: `pushed to easel ↗ — #N`. Do not restate the content.
 
+### Tab presence
+
+Every `push` response tells you how many viewer tabs are currently open for this session. The response text includes `· NO TAB OPEN for this session — ask the user if you should open one (call \`open\`)` when the count is zero.
+
+When you see that hint, in the SAME reply ask the user a one-liner: *"No window is open for this session — want me to open one?"*. If they say yes, call `open()`. If they say no or ignore it, don't ask again unless they explicitly want the visual.
+
+Don't poll. Just react to the hint when it appears.
+
 ---
 
 ## Style — presentation scale, not dashboard scale

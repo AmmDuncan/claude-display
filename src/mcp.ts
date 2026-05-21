@@ -69,7 +69,12 @@ async function pushToServer(args: {
     const text = await r.text();
     throw new Error(`display_push HTTP ${r.status}: ${text}`);
   }
-  return (await r.json()) as { url: string; slide_id: string; index: number };
+  return (await r.json()) as {
+    url: string;
+    slide_id: string;
+    index: number;
+    sessionTabs: number;
+  };
 }
 
 async function main() {
@@ -237,11 +242,15 @@ async function main() {
       port,
     });
 
+    const tabHint =
+      result.sessionTabs === 0
+        ? " · NO TAB OPEN for this session — ask the user if you should open one (call `open`)"
+        : "";
     return {
       content: [
         {
           type: "text" as const,
-          text: `pushed #${result.index} → ${result.url}`,
+          text: `pushed #${result.index} → ${result.url}${tabHint}`,
         },
       ],
     };

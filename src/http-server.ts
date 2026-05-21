@@ -203,10 +203,16 @@ export function startHttpServer(): void {
       sweepIdleSessions();
     }
 
+    let sessionTabs = 0;
+    for (const c of clients.values()) {
+      if (c.sessionId === sessionId) sessionTabs++;
+    }
+
     res.json({
       url: `http://localhost:${port}/s/${sessionId}`,
       slide_id: push.id,
       index: push.index,
+      sessionTabs,
     });
   });
 
