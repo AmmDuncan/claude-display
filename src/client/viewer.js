@@ -144,6 +144,23 @@
       }
       return;
     }
+    if (data.type === "easel:image-ready") {
+      // Iframe rasterised itself; trigger a download in the parent.
+      const a = document.createElement("a");
+      a.href = data.dataUrl;
+      a.download = data.filename || "push.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      const btn = cardsEl.querySelector(
+        'iframe[data-push-id="' + cssEscape(data.pushId) + '"]',
+      );
+      if (btn && btn.closest(".push")) {
+        const ex = btn.closest(".push").querySelector(".push-export");
+        if (ex) delete ex.dataset.loading;
+      }
+      return;
+    }
   });
 
   function cssEscape(s) {
@@ -346,24 +363,38 @@
     time.textContent = formatTime(push.createdAt);
     meta.appendChild(time);
 
-    const printBtn = document.createElement("button");
-    printBtn.className = "push-print";
-    printBtn.type = "button";
-    printBtn.title = "Print / save as PDF";
-    printBtn.setAttribute("aria-label", "Print this push");
-    printBtn.innerHTML =
-      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
-    printBtn.addEventListener("click", (e) => {
+    const exportBtn = document.createElement("button");
+    exportBtn.className = "push-export";
+    exportBtn.type = "button";
+    exportBtn.title = "Save as PNG";
+    exportBtn.setAttribute("aria-label", "Save push as PNG");
+    exportBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+    exportBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       e.preventDefault();
+      const safeTitle = (push.title || "push-" + push.index)
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "push";
+      exportBtn.dataset.loading = "true";
       try {
         iframe.contentWindow &&
-          iframe.contentWindow.postMessage({ type: "easel:print" }, "*");
+          iframe.contentWindow.postMessage(
+            {
+              type: "easel:image",
+              pushId: push.id,
+              filename: safeTitle + ".png",
+            },
+            "*",
+          );
       } catch (err) {
-        console.error("[easel] print failed", err);
+        delete exportBtn.dataset.loading;
+        console.error("[easel] export failed", err);
       }
     });
-    meta.appendChild(printBtn);
+    meta.appendChild(exportBtn);
 
     const del = document.createElement("button");
     del.className = "push-del";
@@ -457,6 +488,7 @@
 <base target="_blank" />
 <link rel="preconnect" href="https://rsms.me/" />
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
 <style>
 ${PRESET_TOKENS_CSS}
 ${SEMANTIC_CHIPS_CSS}
@@ -631,6 +663,29 @@ ${body}
     if (e.data.type === "easel:print") {
       try { window.print(); } catch(_) {}
     }
+    if (e.data.type === "easel:image") {
+      var pushId = e.data.pushId;
+      var filename = e.data.filename || "push.png";
+      function render() {
+        var target = document.body;
+        if (!window.htmlToImage) {
+          console.error("[easel] html-to-image not loaded");
+          return;
+        }
+        window.htmlToImage.toPng(target, {
+          backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--ds-bg-elev").trim() || "#ffffff",
+          pixelRatio: 2,
+          cacheBust: true,
+        }).then(function(dataUrl){
+          parent.postMessage({ type: "easel:image-ready", pushId: pushId, dataUrl: dataUrl, filename: filename }, "*");
+        }).catch(function(err){
+          console.error("[easel] export failed", err);
+        });
+      }
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(render).catch(render);
+      } else { render(); }
+    }
   });
 })();
 </script>
@@ -642,9 +697,9 @@ ${body}
   function injectBridge(html, theme, preset, pushId) {
     const density = currentDensity();
     const configScript =
-      "<script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}if(c.density==='carded'||c.density==='flat'){document.documentElement.setAttribute('data-density',c.density);window.__claudeDisplayDensity=c.density}}a(" +
+      "<script src='https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js'></script><script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}if(c.density==='carded'||c.density==='flat'){document.documentElement.setAttribute('data-density',c.density);window.__claudeDisplayDensity=c.density}}a(" +
       JSON.stringify({ theme, preset, density }) +
-      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='claude-display:config')a(e.data);if(e.data.type==='claude-display:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}})})();</script>";
+      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='claude-display:config')a(e.data);if(e.data.type==='claude-display:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';if(!window.htmlToImage)return;window.htmlToImage.toPng(document.body,{pixelRatio:2,cacheBust:true}).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn},'*')}).catch(function(err){console.error(err)})}})})();</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
     const combined = configScript + measureScript;
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, combined + "</body>");
