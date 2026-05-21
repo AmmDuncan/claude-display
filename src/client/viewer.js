@@ -757,9 +757,18 @@ ${body}
     updatePill();
   }
 
-  /* One observer per unread card. As each crosses 40% visible, it's marked
-     as read and the counter decrements. Bursts of layout-shift from iframe
-     self-measure are ignored for 900ms after the most recent bump. */
+  /* One observer per unread card. The card counts as 'read' when its top
+     edge crosses into the upper half of the viewport — works regardless
+     of card height (the earlier 0.4 ratio threshold broke for cards
+     taller than the viewport, where 40% intersection is unreachable).
+
+     rootMargin "0px 0px -50% 0px" shrinks the bottom 50% of viewport from
+     the observer's root, so the card only intersects when ANY part of it
+     reaches the top half.
+
+     Bursts of layout-shift from iframe self-measure are still ignored
+     for 900ms after the most recent bump so resize-anchoring scrolls
+     don't spuriously mark cards read. */
   function observeUnreadCard(pushId) {
     const card = document.getElementById("push-" + pushId);
     if (!card) return;
@@ -769,11 +778,11 @@ ${body}
     const obs = new IntersectionObserver(
       (entries) => {
         if (Date.now() - bumpAt < 900) return;
-        if (entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.4)) {
+        if (entries.some((e) => e.isIntersecting)) {
           markCardRead(pushId);
         }
       },
-      { threshold: [0, 0.4, 0.6, 1] },
+      { threshold: 0, rootMargin: "0px 0px -50% 0px" },
     );
     obs.observe(card);
     cardObservers.set(pushId, obs);
