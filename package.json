@@ -1,16 +1,51 @@
 {
-  "name": "easel",
-  "version": "0.1.0",
-  "private": true,
-  "description": "A live browser tab for every Claude Code session. The display_push MCP tool appends HTML cards to a scrolling feed you keep open in split-screen.",
+  "name": "@ammduncan/easel",
+  "version": "0.2.0",
+  "description": "A live browser tab for every Claude Code (and MCP) session. The push MCP tool appends HTML cards to a scrolling feed you keep open in split-screen.",
   "type": "module",
+  "license": "MIT",
+  "author": "Ammiel Yawson",
+  "homepage": "https://github.com/AmmDuncan/easel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmmDuncan/easel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AmmDuncan/easel/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "cursor",
+    "windsurf",
+    "claude-desktop",
+    "agent-ui",
+    "browser-display",
+    "live-feed"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "easel": "bin/easel"
   },
+  "files": [
+    "bin/",
+    "dist/",
+    "scripts/easel-session-id.mjs",
+    "skills/",
+    "README.md",
+    "LICENCE"
+  ],
   "scripts": {
     "build": "tsc && node scripts/copy-client.mjs",
     "start": "node dist/cli.js",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",

@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { HOOK_DIR } from "./paths.js";
@@ -11,20 +12,31 @@ export type ResolveOpts = {
 };
 
 /**
- * Resolves the Claude Code session id that owns this MCP process.
- * Tried in order — env > hook-file > transcript scan. Adapted from pitstop.
+ * Resolves the session id that owns this MCP process. Tries, in order:
+ *   1. EASEL_SESSION_ID env var (explicit override for any client)
+ *   2. CLAUDE_CODE_SESSION_ID / CLAUDE_SESSION_ID (Claude Code)
+ *   3. Hook file at ~/.easel/hook/cc-session-<ppid>.txt (Claude Code's
+ *      SessionStart hook writes this; pitstop-style PPID bridging)
+ *   4. Most-recently-modified transcript under ~/.claude/projects/<cwd>/
+ *      (Claude Code transcript scan)
+ *   5. Synthetic id derived from this MCP child's PPID — gives every other
+ *      MCP client (Cursor, Windsurf, Claude Desktop, etc.) a stable session
+ *      per chat without requiring any hook. The MCP child IS the session.
  *
- * Claude Code does NOT pass `session_id` to MCP subprocesses via env or the
- * JSON-RPC stream, so the SessionStart hook is what bridges it across.
+ * Always returns a value from tier 5 if all higher tiers miss, so non-CC
+ * clients are usable out of the box.
  */
-export function resolveClaudeSessionId(opts: ResolveOpts = {}): string | undefined {
+export function resolveClaudeSessionId(opts: ResolveOpts = {}): string {
   const home = opts.homeDir ?? homedir();
   const cwd = opts.cwd ?? process.cwd();
   const ppid = opts.ppid ?? process.ppid;
   const env = opts.env ?? process.env;
 
-  const fromEnv = env.CLAUDE_CODE_SESSION_ID ?? env.CLAUDE_SESSION_ID;
-  if (fromEnv) return fromEnv;
+  const explicit = env.EASEL_SESSION_ID;
+  if (explicit) return explicit;
+
+  const fromCcEnv = env.CLAUDE_CODE_SESSION_ID ?? env.CLAUDE_SESSION_ID;
+  if (fromCcEnv) return fromCcEnv;
 
   const hookFile = join(HOOK_DIR, `cc-session-${ppid}.txt`);
   try {
@@ -47,10 +59,27 @@ export function resolveClaudeSessionId(opts: ResolveOpts = {}): string | undefin
         bestId = f.slice(0, -".jsonl".length);
       }
     }
-    return bestId;
+    if (bestId) return bestId;
   } catch {
     /* fall through */
   }
 
-  return undefined;
+  return syntheticSessionIdFromPpid(ppid);
+}
+
+/**
+ * Mints a stable, UUID-shaped id from the parent PID and parent boot time.
+ * Same PPID across an MCP-child restart → same id (so a flaky child doesn't
+ * spawn a new tab); different chat / different client process → different id.
+ */
+function syntheticSessionIdFromPpid(ppid: number): string {
+  const seed = `mcp-ppid-${ppid}`;
+  const hex = createHash("sha1").update(seed).digest("hex");
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join("-");
 }

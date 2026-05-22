@@ -38,16 +38,6 @@ async function cmdOpen(opts: { quiet: boolean; force: boolean }) {
 
   const { port } = await ensureHttpServer();
   const sessionId = resolveClaudeSessionId();
-  if (!sessionId) {
-    if (!opts.quiet) {
-      console.error(
-        "[easel] couldn't resolve a Claude session id yet — hook may not have fired. Server is running on port " +
-          port +
-          ".",
-      );
-    }
-    return;
-  }
   registerSession(sessionId);
   await registerSessionWithServer(port, sessionId);
 
@@ -95,11 +85,6 @@ async function registerSessionWithServer(
 async function cmdUrl() {
   const { port } = await ensureHttpServer();
   const sessionId = resolveClaudeSessionId();
-  if (!sessionId) {
-    console.error("[easel] no session id resolved.");
-    process.exitCode = 1;
-    return;
-  }
   console.log(`http://localhost:${port}/s/${sessionId}`);
 }
 

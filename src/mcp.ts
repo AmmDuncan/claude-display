@@ -6,8 +6,11 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { ensureHttpServer } from "./server-manager.js";
 import { resolveClaudeSessionId } from "./session-id.js";
+import { HOOK_DIR } from "./paths.js";
 
 function openUrlInBrowser(url: string): void {
   const platform = process.platform;
@@ -25,6 +28,26 @@ const TOOL_PUSH = "push";
 const TOOL_OPEN = "open";
 const TOOL_CONFIG = "config";
 const TOOL_LABEL = "label";
+
+/**
+ * True if a SessionStart hook (e.g. Claude Code's) has already written a
+ * session-id file for this MCP child's PPID. Tells us a hook-aware client is
+ * managing tab lifecycle, so the MCP server should NOT also auto-open.
+ */
+function hookHasFiredForThisPpid(): boolean {
+  return existsSync(join(HOOK_DIR, `cc-session-${process.ppid}.txt`));
+}
+
+// One-shot guard: only auto-open once per MCP-child lifetime. If the user
+// closes the tab afterwards, subsequent pushes won't re-open it.
+let autoOpenAttempted = false;
+
+function maybeAutoOpenTab(url: string): void {
+  if (autoOpenAttempted) return;
+  autoOpenAttempted = true;
+  if (hookHasFiredForThisPpid()) return; // Claude Code already opened it
+  openUrlInBrowser(url);
+}
 
 const inputSchema = {
   type: "object" as const,
@@ -150,18 +173,11 @@ async function main() {
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const sessionId = resolveClaudeSessionId();
-    if (!sessionId) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: "easel: could not resolve a Claude session id. Run `easel setup` to install the SessionStart hook, then restart this Claude session.",
-          },
-        ],
-        isError: true,
-      };
-    }
     const { port } = await ensureHttpServer();
+
+    // Non-Claude-Code clients have no SessionStart hook to open the tab —
+    // we do it ourselves on the first tool call instead.
+    maybeAutoOpenTab(`http://localhost:${port}/s/${sessionId}`);
 
     if (req.params.name === TOOL_OPEN) {
       const url = `http://localhost:${port}/s/${sessionId}`;
