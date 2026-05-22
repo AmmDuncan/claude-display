@@ -16,7 +16,7 @@ import {
 } from "./session-store.js";
 import { readConfig, writeConfig } from "./config-store.js";
 import { clearLockIfMine, writeLock } from "./server-manager.js";
-import { DEFAULT_PORT } from "./paths.js";
+import { resolvePort } from "./paths.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = resolve(__dirname, "client");
@@ -67,7 +67,7 @@ function renderIndexHtml(port: number): string {
 }
 
 export function startHttpServer(): void {
-  const port = Number(process.env.CLAUDE_DISPLAY_PORT) || DEFAULT_PORT;
+  const port = resolvePort();
   const app = express();
   app.use(express.json({ limit: "8mb" }));
   app.use(

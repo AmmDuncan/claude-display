@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const cfg = window.__CLAUDE_DISPLAY__ || {};
+  const cfg = window.__EASEL__ || {};
   const sessionId = cfg.sessionId;
 
   const cardsEl = document.getElementById("cards");
@@ -20,8 +20,8 @@
   const projectLabelEl = document.getElementById("project-label");
 
   const BOTTOM_THRESHOLD_PX = 220;
-  const CONFIG_KEY = "claude-display:config";
-  const LAST_VISITED_KEY = "claude-display:last-visited";
+  const CONFIG_KEY = "easel:config";
+  const LAST_VISITED_KEY = "easel:last-visited";
   const PRESETS = ["paper", "aurora", "slate"];
   const DENSITIES = ["carded", "flat"];
 
@@ -127,7 +127,7 @@
   window.addEventListener("message", (e) => {
     const data = e && e.data;
     if (!data) return;
-    if (data.type === "claude-display:size") {
+    if (data.type === "easel:size") {
       if (!data.pushId || typeof data.height !== "number") return;
       const iframe = cardsEl.querySelector(
         'iframe[data-push-id="' + cssEscape(data.pushId) + '"]',
@@ -136,7 +136,7 @@
       iframe.style.height = Math.max(0, Math.ceil(data.height)) + "px";
       return;
     }
-    if (data.type === "claude-display:click") {
+    if (data.type === "easel:click") {
       // An iframe was clicked — close any open dropdowns in the parent.
       if (switcherMenuEl && !switcherMenuEl.hidden) {
         switcherMenuEl.hidden = true;
@@ -222,7 +222,7 @@
       try {
         iframe.contentWindow &&
           iframe.contentWindow.postMessage(
-            { type: "claude-display:config", ...cfg },
+            { type: "easel:config", ...cfg },
             "*",
           );
       } catch (e) {
@@ -447,7 +447,7 @@
     iframe.addEventListener("load", () => {
       iframes.add(iframe);
       // Primary path: the iframe self-measures and posts back size via
-      // `claude-display:size` — handled by the message listener at the
+      // `easel:size` — handled by the message listener at the
       // top of this module. No DOM peeking from the parent (would fail
       // under cross-origin sandbox anyway).
     });
@@ -485,7 +485,7 @@
     return (
       "(function(){var ID=" +
       JSON.stringify(pushId) +
-      ";function measure(){var b=document.body,h=document.documentElement;if(!b)return 0;return Math.max(b.getBoundingClientRect().bottom,b.scrollHeight,h.scrollHeight)}function send(){try{parent.postMessage({type:'claude-display:size',pushId:ID,height:measure()},'*')}catch(e){}}send();window.addEventListener('load',send);window.addEventListener('resize',send);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(send).catch(function(){})}if(window.ResizeObserver){var ro=new ResizeObserver(send);if(document.body)ro.observe(document.body);ro.observe(document.documentElement)}var mo=new MutationObserver(send);mo.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});setTimeout(send,250);setTimeout(send,800);setTimeout(send,1600)})();"
+      ";function measure(){var b=document.body,h=document.documentElement;if(!b)return 0;return Math.max(b.getBoundingClientRect().bottom,b.scrollHeight,h.scrollHeight)}function send(){try{parent.postMessage({type:'easel:size',pushId:ID,height:measure()},'*')}catch(e){}}send();window.addEventListener('load',send);window.addEventListener('resize',send);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(send).catch(function(){})}if(window.ResizeObserver){var ro=new ResizeObserver(send);if(document.body)ro.observe(document.body);ro.observe(document.documentElement)}var mo=new MutationObserver(send);mo.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});setTimeout(send,250);setTimeout(send,800);setTimeout(send,1600)})();"
     );
   }
 
@@ -668,8 +668,8 @@ ${body}
   }
   window.addEventListener("message", function(e){
     if (!e || !e.data) return;
-    if (e.data.type === "claude-display:config") apply(e.data);
-    if (e.data.type === "claude-display:theme") apply({ theme: e.data.theme });
+    if (e.data.type === "easel:config") apply(e.data);
+    if (e.data.type === "easel:theme") apply({ theme: e.data.theme });
     if (e.data.type === "easel:print") {
       try { window.print(); } catch(_) {}
     }
@@ -723,7 +723,7 @@ ${body}
     const configScript =
       "<script src='https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js'></script><script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}if(c.density==='carded'||c.density==='flat'){document.documentElement.setAttribute('data-density',c.density);window.__claudeDisplayDensity=c.density}}a(" +
       JSON.stringify({ theme, preset, density }) +
-      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='claude-display:config')a(e.data);if(e.data.type==='claude-display:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';var bg=e.data.bgColor||'#ffffff';if(!window.htmlToImage)return;window.htmlToImage.toPng(document.body,{backgroundColor:bg,pixelRatio:4,cacheBust:true}).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn},'*')}).catch(function(err){console.error(err)})}})})();</script>";
+      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='easel:config')a(e.data);if(e.data.type==='easel:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';var bg=e.data.bgColor||'#ffffff';if(!window.htmlToImage)return;window.htmlToImage.toPng(document.body,{backgroundColor:bg,pixelRatio:4,cacheBust:true}).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn},'*')}).catch(function(err){console.error(err)})}})})();</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
     const combined = configScript + measureScript;
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, combined + "</body>");

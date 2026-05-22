@@ -8,7 +8,12 @@ import {
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { DATA_ROOT, DEFAULT_PORT, LOCK_FILE } from "./paths.js";
+import {
+  DATA_ROOT,
+  LOCK_FILE,
+  migrateLegacyDataRoot,
+  resolvePort,
+} from "./paths.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +23,7 @@ type LockRecord = {
   startedAt: number;
 };
 
-function readLock(): LockRecord | undefined {
+export function readLock(): LockRecord | undefined {
   if (!existsSync(LOCK_FILE)) return undefined;
   try {
     return JSON.parse(readFileSync(LOCK_FILE, "utf-8")) as LockRecord;
@@ -53,6 +58,7 @@ async function serverResponding(port: number): Promise<boolean> {
  * a detached child running `dist/http-entry.js` and wait for /health.
  */
 export async function ensureHttpServer(): Promise<{ port: number; reused: boolean }> {
+  migrateLegacyDataRoot();
   mkdirSync(DATA_ROOT, { recursive: true });
 
   const existing = readLock();
@@ -67,13 +73,13 @@ export async function ensureHttpServer(): Promise<{ port: number; reused: boolea
     }
   }
 
-  const port = Number(process.env.CLAUDE_DISPLAY_PORT) || DEFAULT_PORT;
+  const port = resolvePort();
   const entry = resolve(__dirname, "http-entry.js");
 
   const child = spawn(process.execPath, [entry], {
     detached: true,
     stdio: ["ignore", "ignore", "ignore"],
-    env: { ...process.env, CLAUDE_DISPLAY_PORT: String(port) },
+    env: { ...process.env, EASEL_PORT: String(port) },
   });
   child.unref();
 
@@ -88,6 +94,7 @@ export async function ensureHttpServer(): Promise<{ port: number; reused: boolea
 }
 
 export function writeLock(port: number): void {
+  migrateLegacyDataRoot();
   mkdirSync(DATA_ROOT, { recursive: true });
   const record: LockRecord = {
     pid: process.pid,

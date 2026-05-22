@@ -6,7 +6,7 @@
 #   curl -fsSL .../install.sh | EASEL_DIR=~/code/easel bash
 #
 # What it does:
-#   1. Checks prerequisites (node 20+, jq, git).
+#   1. Checks prerequisites (node 20+, git).
 #   2. Clones (or updates) easel into ~/.local/share/easel.
 #   3. Installs npm deps and builds.
 #   4. Patches ~/.claude/settings.json (MCP registration + SessionStart hooks).
@@ -18,7 +18,7 @@ set -euo pipefail
 
 REPO_URL="${EASEL_REPO:-https://github.com/AmmDuncan/easel.git}"
 INSTALL_DIR="${EASEL_DIR:-$HOME/.local/share/easel}"
-BRANCH="${CLAUDE_DISPLAY_BRANCH:-main}"
+BRANCH="${EASEL_BRANCH:-${CLAUDE_DISPLAY_BRANCH:-main}}"
 
 c_dim() { printf '\033[2m%s\033[0m' "$1"; }
 c_ok()  { printf '\033[32m%s\033[0m' "$1"; }
@@ -37,13 +37,12 @@ step "Checking prerequisites"
 require_cmd git
 require_cmd node
 require_cmd npm
-require_cmd jq
 
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "$NODE_MAJOR" -lt 20 ]; then
   die "node $NODE_MAJOR detected — easel needs node 20 or newer"
 fi
-ok "node $(node --version), npm $(npm --version), jq, git"
+ok "node $(node --version), npm $(npm --version), git"
 
 # --- 2. clone / pull -----------------------------------------------------------
 step "Installing to $INSTALL_DIR"

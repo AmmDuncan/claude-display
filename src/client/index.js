@@ -8,8 +8,8 @@
   const presetBtnEls = Array.from(document.querySelectorAll(".preset-btn"));
   const densityBtnEls = Array.from(document.querySelectorAll(".density-btn"));
 
-  const CONFIG_KEY = "claude-display:config";
-  const LAST_VISITED_KEY = "claude-display:last-visited";
+  const CONFIG_KEY = "easel:config";
+  const LAST_VISITED_KEY = "easel:last-visited";
   const PRESETS = ["paper", "aurora", "slate"];
   const DENSITIES = ["carded", "flat"];
 

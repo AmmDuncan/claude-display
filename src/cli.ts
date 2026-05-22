@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSyn
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
-import { ensureHttpServer } from "./server-manager.js";
+import { ensureHttpServer, readLock } from "./server-manager.js";
 import { resolveClaudeSessionId } from "./session-id.js";
 import { HOOK_DIR, DATA_ROOT } from "./paths.js";
 import { registerSession } from "./session-store.js";
@@ -26,6 +26,7 @@ Usage:
   easel config preset aurora theme light   set both at once
   easel setup           install SessionStart hook + register MCP in ~/.claude/settings.json
   easel update          git pull + npm install + build + setup (re-runs setup to apply new conventions)
+  easel restart         kill the running HTTP server and respawn it (picks up new builds/paths)
   easel server          run the HTTP server in the foreground (debug)
   easel version
 `);
@@ -118,7 +119,7 @@ function cmdSetup() {
   mkdirSync(HOOK_DIR, { recursive: true });
 
   const settingsPath = join(homedir(), ".claude", "settings.json");
-  const hookScript = resolve(PROJECT_ROOT, "scripts", "easel-session-id.sh");
+  const hookScript = resolve(PROJECT_ROOT, "scripts", "easel-session-id.mjs");
   const mcpEntry = resolve(PROJECT_ROOT, "dist", "mcp.js");
   const cliEntry = resolve(PROJECT_ROOT, "bin", "easel");
 
@@ -132,7 +133,7 @@ function cmdSetup() {
   //    Falling back to a direct edit if the CLI isn't on PATH.
   registerMcp(mcpEntry);
 
-  // 1b. Install the `using-display` skill so agents discover how to call display_push.
+  // 1b. Install the `using-easel` skill so agents discover when/how to push.
   installSkill();
 
   // 2. Add SessionStart hooks to ~/.claude/settings.json (hooks DO belong here).
@@ -147,8 +148,8 @@ function cmdSetup() {
   const hooks = (settings.hooks as Record<string, unknown>) ?? {};
   let sessionStart = (hooks.SessionStart as unknown[]) ?? [];
 
-  // Drop any legacy entries from prior versions (claude-display-session-id.sh,
-  // bin/claude-display, etc) before re-adding the current ones.
+  // Drop legacy entries from prior versions (the old bash hook, paths under the
+  // claude-display name) before re-adding the current Node-based hook.
   const isLegacy = (block: unknown): boolean => {
     const inner = (block as { hooks?: unknown[]; command?: unknown })?.hooks ?? [block];
     if (!Array.isArray(inner)) return false;
@@ -157,6 +158,7 @@ function cmdSetup() {
       if (typeof cmd !== "string") return false;
       return (
         cmd.includes("claude-display-session-id.sh") ||
+        cmd.includes("easel-session-id.sh") ||
         cmd.includes("bin/claude-display ")
       );
     });
@@ -164,7 +166,7 @@ function cmdSetup() {
   sessionStart = sessionStart.filter((b) => !isLegacy(b));
 
   const idCaptureBlock = {
-    hooks: [{ type: "command", command: `bash ${hookScript}` }],
+    hooks: [{ type: "command", command: `node ${hookScript}` }],
   };
   const autoOpenBlock = {
     hooks: [{ type: "command", command: `${cliEntry} open --quiet` }],
@@ -182,7 +184,7 @@ function cmdSetup() {
       );
     });
 
-  if (!containsBlockMatching("easel-session-id.sh")) {
+  if (!containsBlockMatching("easel-session-id.mjs")) {
     sessionStart.push(idCaptureBlock);
   }
   if (!containsBlockMatching("easel") || !containsBlockMatching("open --quiet")) {
@@ -330,6 +332,26 @@ function cmdUpdate(): void {
   console.log("[easel] updated. Restart Claude Code to pick up tool/skill changes.");
 }
 
+async function cmdRestart() {
+  const lock = readLock();
+  if (lock?.pid) {
+    try {
+      process.kill(lock.pid, "SIGTERM");
+    } catch {
+      // process is already dead — fine
+    }
+    // give the OS a moment to release the port + clean up
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  try {
+    rmSync(join(DATA_ROOT, "server.lock"));
+  } catch {
+    // no lockfile to remove — fine
+  }
+  const { port } = await ensureHttpServer();
+  console.log(`easel server restarted on port ${port}`);
+}
+
 async function cmdServer() {
   const { startHttpServer } = await import("./http-server.js");
   startHttpServer();
@@ -366,6 +388,9 @@ async function main() {
       return;
     case "update":
       cmdUpdate();
+      return;
+    case "restart":
+      await cmdRestart();
       return;
     case "version":
     case "--version":

@@ -12,7 +12,12 @@
   // Bootstrap theme before paint to avoid flash.
   (function () {
     try {
-      var stored = JSON.parse(localStorage.getItem("claude-display:config") || "null");
+      // One-time migration from the project's prior name.
+      if (!localStorage.getItem("easel:config")) {
+        var legacy = localStorage.getItem("claude-display:config");
+        if (legacy) localStorage.setItem("easel:config", legacy);
+      }
+      var stored = JSON.parse(localStorage.getItem("easel:config") || "null");
       var preset = stored && stored.preset ? stored.preset : "paper";
       var theme = stored && stored.theme ? stored.theme : "dark";
       var density = stored && stored.density ? stored.density : "carded";
@@ -85,7 +90,7 @@
 </button>
 
 <script>
-  window.__CLAUDE_DISPLAY__ = {
+  window.__EASEL__ = {
     sessionId: "__SESSION_ID__",
     port: "__PORT__",
   };

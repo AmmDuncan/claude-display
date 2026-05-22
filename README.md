@@ -17,11 +17,11 @@ A live browser tab for every Claude Code session. Agents push HTML — explanati
 
 ## Why
 
-Long markdown explanations bury what the agent is actually doing. Visual content (mockups, comparisons, diagrams) is even worse in a TTY. `easel` gives each chat session its own browser tab, and a single MCP tool — `display_push` — that the agent uses proactively. The terminal stays as a conversation log; the browser carries the substance.
+Long markdown explanations bury what the agent is actually doing. Visual content (mockups, comparisons, diagrams) is even worse in a TTY. `easel` gives each chat session its own browser tab, and a single MCP tool — `push` — that the agent uses proactively. The terminal stays as a conversation log; the browser carries the substance.
 
 ## Install
 
-Requires Node 20+, `jq`, `git`, and Claude Code.
+Requires Node 20+, `git`, and Claude Code.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AmmDuncan/easel/main/scripts/install.sh | bash
@@ -44,23 +44,25 @@ bin/easel setup
 
 | Tool | What it does |
 |---|---|
-| `display_push({ html, title?, kind? })` | Append an HTML card to this session's scrolling feed |
-| `display_open()` | Force-open a fresh browser tab for the current session |
-| `display_config({ preset?, theme?, density? })` | Switch palette / mode / layout live across every tab |
-| `display_label({ label })` | Name the session so it's findable in the switcher |
+| `push({ html, title?, kind? })` | Append an HTML card to this session's scrolling feed |
+| `open()` | Force-open a fresh browser tab for the current session |
+| `config({ preset?, theme?, density? })` | Switch palette / mode / layout live across every tab |
+| `label({ label })` | Name the session so it's findable in the switcher |
+
+Agents invoke them as `mcp__easel__push`, `mcp__easel__open`, etc.
 
 ## Theming
 
 - **Presets**: `paper` (warm pitstop-style, amber accent — default), `aurora` (deep canvas + violet glow halos), `slate` (cool neutral, cyan accent)
 - **Themes**: light / dark, with sun-moon toggle in the topbar
 - **Density**: `carded` (bordered cards) or `flat` (no chrome, whitespace separates pushes)
-- Three swatches + density toggle live in the topbar; config persists in `~/.claude-display/config.json` and SSE-broadcasts across all open tabs
+- Three swatches + density toggle live in the topbar; config persists in `~/.easel/config.json` and SSE-broadcasts across all open tabs
 
 ## Sessions
 
 - Each Claude Code session gets its own URL: `localhost:7878/s/<session-id>`
 - Session IDs come from Claude Code itself (via the pitstop-style SessionStart hook)
-- Sessions auto-rename to `cwd-basename` by default; you can rename them via the click-to-edit label in the topbar, or the agent can via `display_label`
+- Sessions auto-rename to `cwd-basename` by default; you can rename them via the click-to-edit label in the topbar, or the agent can via the `label` tool
 - Idle sessions (>24h since last push) are GC'd every 10 minutes
 - Up to 50 pushes per session; oldest evicted from disk first
 - Per-push delete (trash icon on each card) + per-session delete (hover any row in the switcher or index)
@@ -86,7 +88,7 @@ Each is themed for both light and dark with a soft outer glow.
 
 ```
 src/
-  mcp.ts              stdio MCP — exposes display_push / display_open / display_config / display_label
+  mcp.ts              stdio MCP — exposes push / open / config / label (as mcp__easel__*)
   http-server.ts      express + SSE + static client + sweeper
   http-entry.ts       process entry for the HTTP server
   server-manager.ts   lockfile + spawn coordination
@@ -103,7 +105,7 @@ src/
     index.css         index styles + preset/density picker
     index.js          index page client
 scripts/
-  easel-session-id.sh   SessionStart hook
+  easel-session-id.mjs  SessionStart hook (Node, zero deps)
   install.sh            one-shot installer
   copy-client.mjs       build-time copy of client assets
 bin/
