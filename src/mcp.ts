@@ -148,6 +148,8 @@ export async function main() {
           "• One accent color, 3–4 instances max per card. Status colors (red/amber/green) only when state genuinely maps to status.\n\n" +
           "═══ WHEN TO PUSH ═══\n" +
           "A response that would otherwise contain: >2 paragraphs of explanation, any UI mockup, a diagram, a code diff, a ≥3-option comparison, or a multi-step progress view. Do NOT ask permission — push proactively. After pushing, reply in chat with ONE LINE: 'pushed to easel ↗ — #<index>'. Don't restate the card's content.\n\n" +
+          "═══ BEFORE YOUR FIRST PUSH — LABEL THE SESSION ═══\n" +
+          "Sessions without a label show up in the session switcher as the cwd basename (often something useless like 'ammielyawson' or 'home'), which is unfindable when the user has multiple tabs open. If you haven't called the `label` tool yet in this session, CALL IT NOW before pushing — pass a 1–8 word sentence-case name that describes what the session is about (good: 'SSE explainer', 'Onboarding flow comparison'; bad: 'Helping the user', 'Pushing some cards'). Re-call `label` when the work's theme shifts meaningfully.\n\n" +
           "═══ OTHER ═══\n" +
           "• Pass full HTML only — no Markdown. The iframe injects baseline typography so plain `<h1>/<p>` works without extra CSS, but for anything multi-section define your own `<style>` block.\n" +
           "• `<script>` tags trying to mutate the parent window are sandbox-blocked; in-iframe `<script>` (for animations, charts, interactivity) is fine.",
@@ -166,7 +168,15 @@ export async function main() {
       {
         name: TOOL_LABEL,
         description:
-          "Set or update this Claude session's display label — a short, human phrase that names what the session is about (e.g. 'Roadworthy 401 fix', 'Bulk-add cost items redesign', 'Investigating slow query'). The label appears in the topbar, switcher dropdown, and session index, replacing the cwd basename. Call this proactively whenever the work's theme shifts so the user can navigate sessions by what they ARE, not where they live. Pass an empty string to clear back to cwd basename.",
+          "Set this session's display label — a short, human phrase that names what the chat is about (e.g. 'Roadworthy 401 fix', 'SSE explainer', 'Onboarding flow comparison'). The label replaces the cwd basename in the topbar, switcher dropdown, and session index, making the user's tabs findable.\n\n" +
+          "CALL THIS PROACTIVELY:\n" +
+          "• As soon as the user's intent is clear in this chat — and NO LATER than your first `push`.\n" +
+          "• Without a label, the session shows up as the cwd basename (often something useless like 'home' or 'ammielyawson' for desktop clients), which is unfindable when the user has multiple chat tabs open.\n" +
+          "• Re-call whenever the work's theme shifts meaningfully (e.g. user pivots from 'auth flow design' to 'session cleanup').\n\n" +
+          "FORMAT:\n" +
+          "• 1–8 words, sentence case, no trailing punctuation.\n" +
+          "• Name the ARTEFACT, not the verb. Good: 'RegistrationNumberInput extraction', 'SSE explainer', 'Onboarding A/B'. Bad: 'Extracting RegistrationNumberInput', 'Helping with onboarding', 'Pushing some cards'.\n\n" +
+          "Pass an empty string to clear back to the cwd basename.",
         inputSchema: {
           type: "object" as const,
           properties: {

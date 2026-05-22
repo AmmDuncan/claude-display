@@ -2,6 +2,13 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.7 — 2026-05-22
+
+### Fixed
+- **Agents in non-Claude-Code clients (Claude Desktop, Cursor, etc.) weren't calling the `label` tool**, so their sessions stayed named after the cwd basename of wherever the client spawned the MCP child (often `home` or the user's username — unfindable in the switcher). Claude Code agents do call it because the `SessionStart` hook injects a strong "label NO LATER than your first push" directive; non-CC clients only see tool descriptions, and the old descriptions didn't carry the same urgency.
+- The `label` tool description is now imperative: "as soon as the user's intent is clear, NO LATER than your first push", with format rules (1–8 words, sentence case, name the artefact not the verb) and good/bad examples.
+- The `push` tool description now has a dedicated "BEFORE YOUR FIRST PUSH — LABEL THE SESSION" section that cross-references `label`, so agents see the cue at the moment they're about to push.
+
 ## 0.2.6 — 2026-05-22
 
 ### Fixed
