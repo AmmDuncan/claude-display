@@ -2,6 +2,17 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.2 — 2026-05-22
+
+### Fixed
+- **MCP servers wired via `npx -y @ammduncan/easel` now boot the MCP server instead of printing CLI help.** When stdin isn't a TTY (i.e. the process is launched over a pipe by an MCP client), the bin transparently boots the MCP server. Interactive terminal use still shows help. Previously, Claude Desktop, Cursor, and Windsurf saw the CLI's help text on stdout and reported `Unexpected token 'e' is not valid JSON` for every line.
+
+### Added
+- Explicit `easel mcp` subcommand that runs the stdio MCP server in the foreground (used internally by the no-TTY auto-detection; available as an explicit entry point for clients that want it).
+
+### Changed
+- `dist/mcp.js` now exports `main()` and only auto-runs when invoked directly (not when imported), so the CLI can route to it without double-booting.
+
 ## 0.2.1 — 2026-05-22
 
 ### Added

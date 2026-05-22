@@ -34,6 +34,7 @@ Usage:
   easel setup --client claude-desktop    register the MCP in Claude Desktop's config
   easel setup --client windsurf  register the MCP in Windsurf's config
   easel update          git pull + npm install + build + setup (re-runs setup to apply new conventions)
+  easel mcp             run the stdio MCP server in the foreground (used by clients)
   easel restart         kill the running HTTP server and respawn it (picks up new builds/paths)
   easel server          run the HTTP server in the foreground (debug)
   easel version
@@ -416,7 +417,23 @@ async function main() {
     case "-v":
       cmdVersion();
       return;
-    case undefined:
+    case "mcp": {
+      const { main: mcpMain } = await import("./mcp.js");
+      await mcpMain();
+      return;
+    }
+    case undefined: {
+      // When invoked over a pipe (no TTY on stdin) — e.g. an MCP client
+      // launching us via `npx -y @ammduncan/easel` — boot the MCP server.
+      // Interactive terminal use still gets the help text.
+      if (!process.stdin.isTTY) {
+        const { main: mcpMain } = await import("./mcp.js");
+        await mcpMain();
+        return;
+      }
+      help();
+      return;
+    }
     case "help":
     case "--help":
     case "-h":

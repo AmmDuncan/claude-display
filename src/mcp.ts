@@ -100,7 +100,7 @@ async function pushToServer(args: {
   };
 }
 
-async function main() {
+export async function main() {
   const server = new Server(
     { name: "easel", version: "0.1.0" },
     { capabilities: { tools: {} } },
@@ -276,7 +276,13 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch((err) => {
-  console.error("[easel mcp] fatal:", err);
-  process.exit(1);
-});
+// Auto-run when invoked directly (e.g. `node dist/mcp.js`), not when imported.
+const invokedDirectly =
+  import.meta.url === `file://${process.argv[1]}` ||
+  import.meta.url.endsWith("/dist/mcp.js");
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error("[easel mcp] fatal:", err);
+    process.exit(1);
+  });
+}
