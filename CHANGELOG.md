@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.11 — 2026-05-22
+
+### Docs
+- **Locked-mode container guidance now covers syntax highlighting explicitly.** The existing rule ("background and text are a pair — commit both, re-scope `color: inherit` to children") only addressed single-color text. Syntax-highlighted code blocks layer multiple token colors on top of that, and the recurring failure was a `property` / `punctuation` / `comment` token colored near-background (e.g. `#2c2c40` on `#0f172a`) silently rendering whole identifiers invisible. New guidance in `skills/using-easel/SKILL.md` and the inline `push` tool description spells out: use a tested theme designed for your bg (Shiki `github-dark` / `vitesse-dark` / `one-dark-pro` for `#0f172a`-ish; `github-light` / `vitesse-light` for `#f5f7fa`-ish) OR pick from a verified 6-color palette for `#0f172a` (keyword `#ff7b72`, string `#a5d6ff`, function `#d2a8ff`, property `#79c0ff`, number `#ffa657`, comment `#8b949e`, default `#e6edf3`). Fallback: drop highlighting, use single-color monospace.
+
 ## 0.2.10 — 2026-05-22
 
 ### Changed

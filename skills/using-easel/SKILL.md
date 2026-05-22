@@ -198,6 +198,24 @@ When the mockup references a real thing — a real app, a real component, a real
 
 The rule of thumb: background and text are a pair — commit one, commit the other.
 
+**Syntax highlighting in locked-bg code blocks needs *every token* verified.** "Bg + text are a pair" extends to every token color you use. The recurring failure: lock a code block to `#0f172a`, then layer syntax tokens where one (usually `property`, `punctuation`, or `comment`) is colored `#2c2c40` or `#3b4252` because it "looked subtle" — against `#0f172a` it's nearly invisible and whole identifiers disappear from the block. Two ways out:
+
+1. **Use a tested theme designed for your bg.** Shiki / Prism / Highlight.js themes like `github-dark`, `vitesse-dark`, `one-dark-pro` for `#0f172a`-ish backgrounds; `github-light`, `vitesse-light` for `#f5f7fa`-ish. The theme's author already verified contrast — don't override individual tokens.
+2. **Hand-rolling tokens? Verify each one against the bg, or pick from this verified palette for `#0f172a`:**
+
+```css
+.code            { background: #0f172a; color: #e6edf3; }
+.code .keyword   { color: #ff7b72; }   /* red-pink:   keywords, control flow */
+.code .string    { color: #a5d6ff; }   /* sky:        strings, attribute values */
+.code .function  { color: #d2a8ff; }   /* purple:     function names */
+.code .property  { color: #79c0ff; }   /* blue:       identifiers, properties, members */
+.code .number    { color: #ffa657; }   /* orange:     numbers, constants */
+.code .comment   { color: #8b949e; }   /* muted gray: comments — still readable */
+.code *          { color: inherit; }   /* default everything else to body color */
+```
+
+If you can't articulate why each token color reads against the bg, drop syntax highlighting entirely and use single-color monospace — that always works.
+
 ### 5. Visualizations — tangible over abstract
 
 When something can be represented as a real-world object — browser-chrome tab cards with red/yellow/green dots, proportional horizontal timeline bars with marked phases, device frames, code editor windows, terminal windows, merging-pipe shapes for funnels — **do that**, not abstract labeled rectangles with arrows.
