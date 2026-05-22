@@ -111,7 +111,40 @@ export async function main() {
       {
         name: TOOL_PUSH,
         description:
-          "Push an HTML card to this session's live browser tab (easel). Every card appends to a single scrolling page that the user keeps open in split-screen. Use proactively (per global Rule 33) for wordy explanations, mockups, diagrams, diffs, ≥3-option comparisons, or progress views — do NOT ask permission. Pass full HTML (not Markdown).",
+          "Push an HTML card to this session's live browser tab. Renders in a sandboxed iframe over a host-controlled canvas that can be LIGHT or DARK depending on the user's OS theme. Treat each card as a presentation slide — generous whitespace, presentation-scale type, tangible visuals. Your HTML MUST adapt to both light and dark modes.\n\n" +
+          "═══ ADAPTIVE COLOR (gets wrong most often) ═══\n" +
+          "• Do NOT set `background` on `body` or your root wrapper. The host paints the canvas — setting bg fights it and creates a wrong-shade block in the opposite mode.\n" +
+          "• Use `light-dark()` for ALL text colors, card backgrounds, borders, and decorative shades. Add `:root { color-scheme: light dark; }` so the function resolves. Hardcoded `color: #475569` goes invisible in dark mode; hardcoded `border: 1px solid #e5e5e5` becomes a hard white line.\n" +
+          "• After setting `.wrap { color: light-dark(...); }`, re-scope `color: inherit` to every descendant so child elements don't fall back to the host's default.\n" +
+          "• Inverse rule: if you DO paint a fixed background on a container (a code block locked to dark, a brand-color hero), you MUST also set its text color AND re-scope `color: inherit` to its children. Background and text are a pair.\n\n" +
+          "═══ COPY-PASTE STARTER ═══\n" +
+          "  :root { color-scheme: light dark; }\n" +
+          "  .wrap { color: light-dark(#111, #e8e8e8); padding: 56px 48px; font-family: -apple-system, 'Inter', system-ui, sans-serif; max-width: 820px; }\n" +
+          "  .wrap *, .wrap h1, .wrap h2, .wrap h3, .wrap p, .wrap li, .wrap span { color: inherit; }\n" +
+          "  .card { background: light-dark(#fff, #161616); border: 1px solid light-dark(#e0d9c3, #2a2a2a); border-radius: 12px; padding: 24px; }\n\n" +
+          "═══ TYPOGRAPHY (presentation scale, NOT dashboard) ═══\n" +
+          "• Hero title: 44–52px, weight 500, letter-spacing -0.025em\n" +
+          "• Section titles: 28–36px, weight 500\n" +
+          "• Body: 18–22px, line-height 1.55+\n" +
+          "• Eyebrow / kicker: 13–14px uppercase, letter-spacing 0.14em+, colored as a muted accent\n" +
+          "• Inter or system sans-serif. Never go below 13px for readable content.\n\n" +
+          "═══ WHITESPACE ═══\n" +
+          "• Page padding: 56–80px vertical, 40–56px horizontal\n" +
+          "• Card padding: 24–32px\n" +
+          "• Between major sections: 56–96px\n\n" +
+          "═══ VISUALS — tangible beats abstract ═══\n" +
+          "The test: 'Could a bullet list communicate this just as well?' If yes, the visual is decoration not explanation — rebuild it as something tangible.\n" +
+          "• YES: skeuomorphic browser chrome (3 traffic-light dots + URL bar), terminal windows with monospace + prompt, code-editor frames with line gutters, real device mockups, proportional timeline bars with phase markers, pipe-shaped funnels.\n" +
+          "• NO: 5 labeled rectangles connected by arrows; abstract 'sequence diagrams' of thin lines with text labels; numbered-box explainers where each box is just a title + 1 sentence.\n\n" +
+          "═══ LAYOUT ═══\n" +
+          "• Stack desktop mockups VERTICALLY with labels ('Now', 'Proposed') — don't squeeze them side-by-side. The iframe is ~900px wide; two desktop screens at half-width crush columns, wrap headings to 3 lines, and turn tables unreadable.\n" +
+          "• Side-by-side is fine only for narrow mobile mockups, small cards, or short text columns that genuinely fit in half-width.\n" +
+          "• One accent color, 3–4 instances max per card. Status colors (red/amber/green) only when state genuinely maps to status.\n\n" +
+          "═══ WHEN TO PUSH ═══\n" +
+          "A response that would otherwise contain: >2 paragraphs of explanation, any UI mockup, a diagram, a code diff, a ≥3-option comparison, or a multi-step progress view. Do NOT ask permission — push proactively. After pushing, reply in chat with ONE LINE: 'pushed to easel ↗ — #<index>'. Don't restate the card's content.\n\n" +
+          "═══ OTHER ═══\n" +
+          "• Pass full HTML only — no Markdown. The iframe injects baseline typography so plain `<h1>/<p>` works without extra CSS, but for anything multi-section define your own `<style>` block.\n" +
+          "• `<script>` tags trying to mutate the parent window are sandbox-blocked; in-iframe `<script>` (for animations, charts, interactivity) is fine.",
         inputSchema,
       },
       {

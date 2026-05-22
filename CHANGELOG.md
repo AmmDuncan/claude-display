@@ -2,6 +2,12 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.4 — 2026-05-22
+
+### Fixed
+- **Pushes from non-Claude-Code clients (Claude Desktop, Cursor, Windsurf, etc.) ignored the easel style guide.** The full guide lives in the `using-easel` skill — but skills are a Claude Code feature; other MCP clients never see them. The MCP `push` tool's description only said "Pass full HTML" and contained none of the styling rules, so agents in non-CC clients hardcoded one mode's colors. Result: lede text colored `#475569` went invisible in dark mode, hardcoded `#e5e5e5` borders became hard white lines, mockups crammed into half-width columns, etc.
+- The `push` tool description now carries the essentials inline: adaptive-color rules (`light-dark()` + `color: inherit` re-scoping + locked-mode container inverse rule), a copy-paste starter pattern, presentation-scale typography, whitespace, tangible-visual heuristics, vertical stacking of desktop mockups, and the proactive-push convention. Every MCP client surfaces tool descriptions to its agent, so this lands cross-client.
+
 ## 0.2.3 — 2026-05-22
 
 ### Fixed
