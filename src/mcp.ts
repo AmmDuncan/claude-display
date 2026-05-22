@@ -165,7 +165,8 @@ export async function main() {
           "  .terminal { background: #0f172a; color: #e6edf3; border-radius: 12px; padding: 20px 24px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 13.5px; line-height: 1.7; }\n" +
           "  .terminal *, .terminal span, .terminal pre { color: inherit; }\n" +
           "  .terminal .muted { color: #94a3b8; }\n" +
-          "  .terminal .accent { color: #6ee7b7; }\n\n" +
+          "  .terminal .accent { color: #6ee7b7; }\n" +
+          "• Syntax-highlighted code in a locked-bg block: EVERY token color must be verified readable against the bg, not just the body color. Recurring bug: locking to #0f172a then giving 'property' / 'punctuation' / 'comment' tokens something like #2c2c40 because it 'looked subtle' — against #0f172a it's nearly invisible and identifiers disappear. Either use a tested theme designed for your bg (Shiki github-dark / vitesse-dark / one-dark-pro for #0f172a-ish, github-light / vitesse-light for #f5f7fa-ish), or pick from this verified palette for #0f172a: keyword #ff7b72, string #a5d6ff, function #d2a8ff, property #79c0ff, number #ffa657, comment #8b949e, default text #e6edf3. If you can't articulate why each token reads against the bg, drop highlighting and use single-color monospace — that always works.\n\n" +
           "═══ TYPOGRAPHY (presentation scale, NOT dashboard) ═══\n" +
           "• Hero title: 44–52px, weight 500, letter-spacing -0.025em\n" +
           "• Section titles: 28–36px, weight 500\n" +
