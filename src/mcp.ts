@@ -117,11 +117,17 @@ export async function main() {
           "• Use `light-dark()` for ALL text colors, card backgrounds, borders, and decorative shades. Add `:root { color-scheme: light dark; }` so the function resolves. Hardcoded `color: #475569` goes invisible in dark mode; hardcoded `border: 1px solid #e5e5e5` becomes a hard white line.\n" +
           "• After setting `.wrap { color: light-dark(...); }`, re-scope `color: inherit` to every descendant so child elements don't fall back to the host's default.\n" +
           "• Inverse rule: if you DO paint a fixed background on a container (a code block locked to dark, a brand-color hero), you MUST also set its text color AND re-scope `color: inherit` to its children. Background and text are a pair.\n\n" +
-          "═══ COPY-PASTE STARTER ═══\n" +
+          "═══ COPY-PASTE STARTER (adaptive) ═══\n" +
           "  :root { color-scheme: light dark; }\n" +
           "  .wrap { color: light-dark(#111, #e8e8e8); padding: 56px 48px; font-family: -apple-system, 'Inter', system-ui, sans-serif; max-width: 820px; }\n" +
           "  .wrap *, .wrap h1, .wrap h2, .wrap h3, .wrap p, .wrap li, .wrap span { color: inherit; }\n" +
           "  .card { background: light-dark(#fff, #161616); border: 1px solid light-dark(#e0d9c3, #2a2a2a); border-radius: 12px; padding: 24px; }\n\n" +
+          "═══ COPY-PASTE STARTER (LOCKED-MODE container — terminal, code block, brand hero) ═══\n" +
+          "If a container has a FIXED background (not `light-dark()`), you MUST set its own text color AND re-scope `color: inherit` to its children. Otherwise the children inherit `light-dark(...)` from `.wrap` and the text flips to the wrong shade in one mode (e.g. dark text on a locked-dark terminal in light host mode → invisible). This is the #1 thing that goes wrong on terminals and code blocks.\n" +
+          "  .terminal { background: #0f172a; color: #e6edf3; border-radius: 12px; padding: 20px 24px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 13.5px; line-height: 1.7; }\n" +
+          "  .terminal *, .terminal span, .terminal pre { color: inherit; }\n" +
+          "  .terminal .muted { color: #94a3b8; }\n" +
+          "  .terminal .accent { color: #6ee7b7; }\n\n" +
           "═══ TYPOGRAPHY (presentation scale, NOT dashboard) ═══\n" +
           "• Hero title: 44–52px, weight 500, letter-spacing -0.025em\n" +
           "• Section titles: 28–36px, weight 500\n" +

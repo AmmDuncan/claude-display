@@ -2,6 +2,12 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.6 — 2026-05-22
+
+### Fixed
+- **Locked-mode containers (terminal mockups, code blocks, brand-color heros) had invisible text in light mode** when pushed from non-Claude-Code clients. The push tool description's "inverse rule" was stated in prose but had no copy-paste code example — and the wrap/card example used `light-dark()` while the agent then applied the same pattern to a locked-dark terminal, leaving its inner text on `color: inherit` (which resolved to the wrap's dark text in light mode → dark text on dark bg).
+- Added a second copy-paste starter block specifically for locked-mode containers, showing the canonical pattern (`background: #0f172a; color: #e6edf3;` + re-scoping `color: inherit` to children). Right next to the adaptive wrap/card pattern so the agent can't miss the difference.
+
 ## 0.2.5 — 2026-05-22
 
 ### Added
