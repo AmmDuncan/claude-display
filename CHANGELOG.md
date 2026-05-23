@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.12 — 2026-05-23
+
+### Docs
+- **Locked-mode guidance now ships a paired light example next to the dark one.** The existing rule — "background and text are a pair, commit both, re-scope `color: inherit` to children" — was illustrated only with a dark `.terminal` block. Agents (and people) generalized the rule to "lock your dark containers" and missed the equally-common inverse: a white `.card` on the host canvas with no `color:` of its own, which in dark host mode inherits `.wrap`'s `light-dark()` and resolves to light gray → invisible titles on white. The skill and inline `push` tool description now show both shapes side by side so agents see the rule is direction-agnostic.
+
 ## 0.2.11 — 2026-05-22
 
 ### Docs

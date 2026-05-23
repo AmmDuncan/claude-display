@@ -166,6 +166,9 @@ export async function main() {
           "  .terminal *, .terminal span, .terminal pre { color: inherit; }\n" +
           "  .terminal .muted { color: #94a3b8; }\n" +
           "  .terminal .accent { color: #6ee7b7; }\n" +
+          "• Same pairing applies in the OPPOSITE direction — locked-LIGHT containers (e.g. a white card on the host canvas). A `.card { background: #fff }` with no `color:` inherits `.wrap`'s light-dark() text, which in dark host mode resolves to a light cream/gray → invisible titles on a white card. Commit text too AND re-scope inherit on children. This bites just as often as the dark case.\n" +
+          "  .card { background: #ffffff; color: #111111; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 32px; }\n" +
+          "  .card * { color: inherit; }\n" +
           "• Syntax-highlighted code in a locked-bg block: EVERY token color must be verified readable against the bg, not just the body color. Recurring bug: locking to #0f172a then giving 'property' / 'punctuation' / 'comment' tokens something like #2c2c40 because it 'looked subtle' — against #0f172a it's nearly invisible and identifiers disappear. Either use a tested theme designed for your bg (Shiki github-dark / vitesse-dark / one-dark-pro for #0f172a-ish, github-light / vitesse-light for #f5f7fa-ish), or pick from this verified palette for #0f172a: keyword #ff7b72, string #a5d6ff, function #d2a8ff, property #79c0ff, number #ffa657, comment #8b949e, default text #e6edf3. If you can't articulate why each token reads against the bg, drop highlighting and use single-color monospace — that always works.\n\n" +
           "═══ TYPOGRAPHY (presentation scale, NOT dashboard) ═══\n" +
           "• Hero title: 44–52px, weight 500, letter-spacing -0.025em\n" +
