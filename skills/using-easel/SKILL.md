@@ -189,14 +189,28 @@ When the mockup references a real thing — a real app, a real component, a real
 **If you can't reach the actuals**, say so explicitly in the chat reply (e.g. *"Couldn't find the project's theme file — colors and sizing in this mock are estimates"*) and skip the mock if it would mislead. A recreation labelled "approximation" is fine; one passed off as accurate is a trap.
 
 ```css
+/* Locked-dark container (terminal, dark code block, dark callout). */
 .terminal {
   background: #0f172a;  /* locked dark, ignores host mode */
   color: #e6edf3;       /* MUST set text too */
 }
 .terminal * { color: inherit; }  /* re-scope so .wrap's light-dark() doesn't leak in */
+
+/* Locked-LIGHT container (white card on the host canvas). Just as common a
+ * failure as the dark case: a white `.card` with no `color:` of its own
+ * inherits `.wrap`'s light-dark() text → in dark host mode that resolves to
+ * light gray → invisible titles on a white card. Commit the same way. */
+.card {
+  background: #ffffff;  /* locked white, ignores host mode */
+  color: #111111;       /* MUST set text too */
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 24px 32px;
+}
+.card * { color: inherit; }
 ```
 
-The rule of thumb: background and text are a pair — commit one, commit the other.
+The rule of thumb: background and text are a pair — commit one, commit the other. The direction (dark or light) doesn't matter; the pairing does.
 
 **Syntax highlighting in locked-bg code blocks needs *every token* verified.** "Bg + text are a pair" extends to every token color you use. The recurring failure: lock a code block to `#0f172a`, then layer syntax tokens where one (usually `property`, `punctuation`, or `comment`) is colored `#2c2c40` or `#3b4252` because it "looked subtle" — against `#0f172a` it's nearly invisible and whole identifiers disappear from the block. Two ways out:
 
