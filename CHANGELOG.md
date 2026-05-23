@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.13 — 2026-05-23
+
+### Added
+- **`kind: "mockup"` and `kind: "app"` switch the iframe into app-fidelity mode.** The wrapper skips its presentation defaults (Inter body font, design-token CSS, semantic chips, body bg/color, prose width constraints) and only keeps the box-sizing reset and the html-to-image bridge. Agent paints everything. Makes the existing "App/UI recreations are always locked-mode" rule structural — for a true mockup, opt in via `kind` and the wrapper stops fighting you instead of relying on the agent remembering to override every default. Presentation pushes (explanations, comparisons, status reports) keep the existing wrapper as before.
+
 ## 0.2.12 — 2026-05-23
 
 ### Docs
