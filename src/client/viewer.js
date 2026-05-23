@@ -867,18 +867,21 @@ ${body}
           document.body ? document.body.scrollHeight : 0,
         );
         // PNG target → lossless PNG @ pixelRatio 4 for crisp standalone files.
-        // PDF target → JPEG @ quality 0.92 + pixelRatio 2. PDFs natively use
-        // DCT compression for embedded images, so JPEG-in-PDF stays small;
-        // PNG-in-PDF balloons (a tall card at DPR 4 produces 300+ MB PDFs).
+        // PDF target → JPEG @ quality 1.0 + pixelRatio 4. PDFs natively use
+        // DCT compression for embedded JPEGs, so even at max quality the PDF
+        // stays in the ~3-8 MB range for a typical card (vs ~300 MB if we
+        // embedded as PNG — see 0.2.15). 1.0 + DPR 4 keeps text razor-sharp
+        // at any zoom level; tuned down to 0.92 + DPR 2 in 0.2.15 dropped to
+        // ~800 KB but at the cost of visible JPEG artefacts on type.
         var rasterFn = format === "pdf" ? window.htmlToImage.toJpeg : window.htmlToImage.toPng;
         var rasterOpts = {
           backgroundColor: bgColor,
-          pixelRatio: format === "pdf" ? 2 : 4,
+          pixelRatio: 4,
           cacheBust: true,
           width: width,
           height: height,
         };
-        if (format === "pdf") rasterOpts.quality = 0.92;
+        if (format === "pdf") rasterOpts.quality = 1.0;
         rasterFn(document.documentElement, rasterOpts).then(function(dataUrl){
           parent.postMessage({ type: "easel:image-ready", pushId: pushId, dataUrl: dataUrl, filename: filename, format: format }, "*");
         }).catch(function(err){
@@ -903,7 +906,7 @@ ${body}
     const configScript =
       "<script src='https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js'></script><script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}if(c.density==='carded'||c.density==='flat'){document.documentElement.setAttribute('data-density',c.density);window.__claudeDisplayDensity=c.density}}a(" +
       JSON.stringify({ theme, preset, density }) +
-      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='easel:config')a(e.data);if(e.data.type==='easel:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';var fmt=e.data.format==='pdf'?'pdf':'png';var bg=e.data.bgColor||'#ffffff';if(!window.htmlToImage)return;var rfn=fmt==='pdf'?window.htmlToImage.toJpeg:window.htmlToImage.toPng;var ropts={backgroundColor:bg,pixelRatio:fmt==='pdf'?2:4,cacheBust:true};if(fmt==='pdf')ropts.quality=0.92;rfn(document.body,ropts).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn,format:fmt},'*')}).catch(function(err){console.error(err);parent.postMessage({type:'easel:image-error',pushId:pid,format:fmt,message:(err&&err.message)?err.message:String(err)},'*')})}})})();</script>";
+      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='easel:config')a(e.data);if(e.data.type==='easel:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';var fmt=e.data.format==='pdf'?'pdf':'png';var bg=e.data.bgColor||'#ffffff';if(!window.htmlToImage)return;var rfn=fmt==='pdf'?window.htmlToImage.toJpeg:window.htmlToImage.toPng;var ropts={backgroundColor:bg,pixelRatio:4,cacheBust:true};if(fmt==='pdf')ropts.quality=1.0;rfn(document.body,ropts).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn,format:fmt},'*')}).catch(function(err){console.error(err);parent.postMessage({type:'easel:image-error',pushId:pid,format:fmt,message:(err&&err.message)?err.message:String(err)},'*')})}})})();</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
     const combined = configScript + measureScript;
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, combined + "</body>");

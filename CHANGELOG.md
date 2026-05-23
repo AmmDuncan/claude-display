@@ -2,6 +2,12 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.16 — 2026-05-23
+
+### Changed
+- **PDF export quality bumped back up after the 0.2.15 size fix landed.** 0.2.15 traded crispness for size (JPEG 0.92 + DPR 2 → ~800 KB per card) — visible JPEG artefacts on type at zoom. Bumped to JPEG quality 1.0 + DPR 4 for the PDF target. Same compression trick (JPEG-in-PDF vs PNG-in-PDF) keeps the file at ~3–8 MB per card instead of the original 300+ MB; the higher quality settings just bring text back to "razor sharp at any zoom" without giving up the size win.
+- PNG export unchanged (still lossless PNG @ DPR 4).
+
 ## 0.2.15 — 2026-05-23
 
 ### Fixed
