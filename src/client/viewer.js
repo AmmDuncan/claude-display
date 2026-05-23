@@ -585,7 +585,7 @@
     iframe.setAttribute("scrolling", "no");
     iframe.setAttribute("title", push.title || "push " + push.index);
     iframe.dataset.pushId = push.id;
-    iframe.srcdoc = wrapPushedHtml(push.html, currentTheme(), push.id);
+    iframe.srcdoc = wrapPushedHtml(push.html, currentTheme(), push.id, push.kind);
     iframe.addEventListener("load", () => {
       iframes.add(iframe);
       // Primary path: the iframe self-measures and posts back size via
@@ -607,7 +607,7 @@
        - write plain HTML (<h1>, <h2>, <p>, etc.) — gets styled for free, OR
        - write their own <style> and override anything.
      ============================================================ */
-  function wrapPushedHtml(html, theme, pushId) {
+  function wrapPushedHtml(html, theme, pushId, kind) {
     // Authors sometimes wrap payloads in <![CDATA[ ... ]]> (treating html
     // like CDATA-in-XML). Strip the XML-ism before doing anything else —
     // otherwise the iframe renders the CDATA tags as visible text.
@@ -620,7 +620,8 @@
     if (lower.startsWith("<!doctype") || lower.startsWith("<html")) {
       return injectBridge(cleaned, theme, preset, pushId);
     }
-    return buildDefaultWrapper(cleaned, theme, preset, pushId);
+    const isAppFidelity = kind === "mockup" || kind === "app";
+    return buildDefaultWrapper(cleaned, theme, preset, pushId, isAppFidelity);
   }
 
   function selfMeasureScript(pushId) {
@@ -631,8 +632,29 @@
     );
   }
 
-  function buildDefaultWrapper(body, theme, preset, pushId) {
+  function buildDefaultWrapper(body, theme, preset, pushId, appFidelity) {
     const density = currentDensity();
+    // app-fidelity mode: skip presentation defaults (presets, semantic chips,
+    // body font/bg/color, prose constraints). Agent paints everything. Only
+    // keeps box-sizing reset + the html-to-image bridge script.
+    if (appFidelity) {
+      return `<!DOCTYPE html>
+<html data-theme="${theme}" data-preset="${preset}" data-density="${density}" data-app-fidelity="true">
+<head>
+<meta charset="utf-8" />
+<base target="_blank" />
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+</style>
+</head>
+<body>
+${body}
+<script>${selfMeasureScript(pushId)}</script>
+</body>
+</html>`;
+    }
     return `<!DOCTYPE html>
 <html data-theme="${theme}" data-preset="${preset}" data-density="${density}">
 <head>

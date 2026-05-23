@@ -101,7 +101,7 @@ const inputSchema = {
     kind: {
       type: "string",
       description:
-        "Freeform tag: mockup, diff, explanation, comparison, diagram, status, progress, etc.",
+        "Freeform tag: mockup, app, diff, explanation, comparison, diagram, status, progress, etc. SPECIAL: 'mockup' and 'app' switch the iframe into APP-FIDELITY mode — the wrapper skips its presentation defaults (Inter body font, design-token CSS, semantic chips, prose width constraints, body bg/color). Only the box-sizing reset and the html-to-image bridge stay. Use this when the push is a recreation of real UI (app screen, component instance, embedded preview) and you want full control over every pixel without the host theme leaking in. For presentation content (explanations, comparisons, status reports), omit kind or use a non-fidelity value.",
     },
   },
   required: ["html"],
