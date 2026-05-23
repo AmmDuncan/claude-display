@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.20 — 2026-05-23
+
+### Fixed
+- **Prose reading-width cap silently missed when content was wrapped in `.wrap`.** The 880px cap only targeted direct body children (`body > p`, `body > h1`, …). But the skill recommends wrapping push content in `<div class="wrap">`, so prose became `body > .wrap > p` and the selector never matched — prose stretched the full card width (defeating the whole point of the reading column, and making the 0.2.19 full-bleed demo look like "everything's wide" rather than "prose narrow, mockup wide"). Extended the cap to also match one level deep through `.wrap`. `.full-bleed` was unaffected (it escapes via viewport units regardless of nesting).
+
 ## 0.2.19 — 2026-05-23
 
 ### Added
