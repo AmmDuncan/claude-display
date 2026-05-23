@@ -2,6 +2,13 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.15 — 2026-05-23
+
+### Fixed
+- **PDF exports were enormous (300+ MB for a single-page card).** Two stacking causes: (1) the iframe always rasterised at `pixelRatio: 4` regardless of target, producing huge bitmaps for tall cards; (2) the parent then embedded the result into jsPDF as a `PNG`, which PDFs store using Flate compression — far less efficient than the DCT compression PDFs natively use for JPEGs. A tall card at DPR 4 → ~6000×10000 pixel PNG → ~300 MB PDF wrapper.
+- Fix: for PDF targets only, the iframe now rasterises as JPEG at `quality: 0.92` and `pixelRatio: 2`, and the parent embeds with `'JPEG'` format + `'FAST'` compression flag + `compress: true` at the document level. PNG exports stay at lossless PNG + pixelRatio 4 — no quality loss for the standalone PNG download.
+- Expected sizes for a typical card: ~3–8 MB (down from ~300 MB), text still crisp on screen and in print.
+
 ## 0.2.14 — 2026-05-23
 
 ### Changed

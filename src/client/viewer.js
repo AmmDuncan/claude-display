@@ -196,8 +196,12 @@
   }
 
   /**
-   * Embed a PNG dataURL into a single-page PDF sized to the image's pixel
-   * dimensions, producing a continuous (no page-breaks) document, then save.
+   * Embed a rasterised dataURL into a single-page PDF sized to the image's
+   * pixel dimensions, producing a continuous (no page-breaks) document, then
+   * save. The iframe sends a JPEG dataURL for PDF targets — PDFs natively use
+   * DCT compression for JPEGs, so embedding stays compact (vs PNGs which
+   * balloon the file). We detect format from the dataURL prefix; PNG still
+   * works as a fallback for any legacy caller that sends one.
    */
   function downloadAsPdf(dataUrl, filename) {
     return new Promise((resolve, reject) => {
@@ -206,6 +210,8 @@
         reject(new Error("jsPDF not loaded"));
         return;
       }
+      const isJpeg = dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg");
+      const imageType = isJpeg ? "JPEG" : "PNG";
       const img = new Image();
       img.onload = () => {
         try {
@@ -216,8 +222,9 @@
             format: [w, h],
             orientation: w > h ? "landscape" : "portrait",
             hotfixes: ["px_scaling"],
+            compress: true,
           });
-          pdf.addImage(dataUrl, "PNG", 0, 0, w, h);
+          pdf.addImage(dataUrl, imageType, 0, 0, w, h, undefined, "FAST");
           pdf.save(filename);
           resolve();
         } catch (err) {
@@ -859,13 +866,20 @@ ${body}
           document.documentElement.scrollHeight,
           document.body ? document.body.scrollHeight : 0,
         );
-        window.htmlToImage.toPng(document.documentElement, {
+        // PNG target → lossless PNG @ pixelRatio 4 for crisp standalone files.
+        // PDF target → JPEG @ quality 0.92 + pixelRatio 2. PDFs natively use
+        // DCT compression for embedded images, so JPEG-in-PDF stays small;
+        // PNG-in-PDF balloons (a tall card at DPR 4 produces 300+ MB PDFs).
+        var rasterFn = format === "pdf" ? window.htmlToImage.toJpeg : window.htmlToImage.toPng;
+        var rasterOpts = {
           backgroundColor: bgColor,
-          pixelRatio: 4,
+          pixelRatio: format === "pdf" ? 2 : 4,
           cacheBust: true,
           width: width,
           height: height,
-        }).then(function(dataUrl){
+        };
+        if (format === "pdf") rasterOpts.quality = 0.92;
+        rasterFn(document.documentElement, rasterOpts).then(function(dataUrl){
           parent.postMessage({ type: "easel:image-ready", pushId: pushId, dataUrl: dataUrl, filename: filename, format: format }, "*");
         }).catch(function(err){
           console.error("[easel] export failed", err);
@@ -889,7 +903,7 @@ ${body}
     const configScript =
       "<script src='https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js'></script><script>(function(){function a(c){if(!c)return;if(c.theme==='light'||c.theme==='dark'){document.documentElement.setAttribute('data-theme',c.theme);window.__claudeDisplayTheme=c.theme}if(c.preset==='paper'||c.preset==='aurora'||c.preset==='slate'){document.documentElement.setAttribute('data-preset',c.preset);window.__claudeDisplayPreset=c.preset}if(c.density==='carded'||c.density==='flat'){document.documentElement.setAttribute('data-density',c.density);window.__claudeDisplayDensity=c.density}}a(" +
       JSON.stringify({ theme, preset, density }) +
-      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='easel:config')a(e.data);if(e.data.type==='easel:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';var fmt=e.data.format==='pdf'?'pdf':'png';var bg=e.data.bgColor||'#ffffff';if(!window.htmlToImage)return;window.htmlToImage.toPng(document.body,{backgroundColor:bg,pixelRatio:4,cacheBust:true}).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn,format:fmt},'*')}).catch(function(err){console.error(err);parent.postMessage({type:'easel:image-error',pushId:pid,format:fmt,message:(err&&err.message)?err.message:String(err)},'*')})}})})();</script>";
+      ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='easel:config')a(e.data);if(e.data.type==='easel:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}if(e.data.type==='easel:image'){var pid=e.data.pushId;var fn=e.data.filename||'push.png';var fmt=e.data.format==='pdf'?'pdf':'png';var bg=e.data.bgColor||'#ffffff';if(!window.htmlToImage)return;var rfn=fmt==='pdf'?window.htmlToImage.toJpeg:window.htmlToImage.toPng;var ropts={backgroundColor:bg,pixelRatio:fmt==='pdf'?2:4,cacheBust:true};if(fmt==='pdf')ropts.quality=0.92;rfn(document.body,ropts).then(function(u){parent.postMessage({type:'easel:image-ready',pushId:pid,dataUrl:u,filename:fn,format:fmt},'*')}).catch(function(err){console.error(err);parent.postMessage({type:'easel:image-error',pushId:pid,format:fmt,message:(err&&err.message)?err.message:String(err)},'*')})}})})();</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
     const combined = configScript + measureScript;
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, combined + "</body>");
