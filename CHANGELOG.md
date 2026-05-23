@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.18 — 2026-05-23
+
+### Reverted
+- **Reverted the 0.2.17 full-bleed *card* breakout.** That change made `kind: mockup/app` cards grow to near-full viewport width — wrong axis. The actual ask was for the *content* to fill the card edge-to-edge (no inner inset), with the card itself staying at the normal reading-column width. That's already handled by app-fidelity mode (0.2.13): the wrapper sets `body { margin:0; padding:0 }`, `.push-body` has no padding, and the iframe is `width:100%`, so mockup content fills the card to its rounded edges. Cards now stay column-width again; mockup content still bleeds to the card edges.
+
 ## 0.2.17 — 2026-05-23
 
 ### Added
