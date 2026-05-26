@@ -112,6 +112,127 @@
 .chip.accent { background:var(--ds-accent-soft); color:var(--ds-accent); border-color:transparent; box-shadow:0 0 12px -4px color-mix(in srgb, var(--ds-accent) 40%, transparent); }
 `;
 
+  /* Self-contained structural primitives — window chrome + locked code/terminal.
+     These pin their own background and ink with fixed (theme-independent) colours,
+     so unlike the preset-token presentation styles they CAN'T leak the host theme.
+     Injected in BOTH the normal wrapper AND app-fidelity (mockup/app) mode: a UI
+     recreation is exactly where an agent reaches for a window frame or a code
+     block, so stripping these in fidelity mode left the skill's own guidance
+     ("wrap a mockup in .window") producing unstyled output. */
+  const STRUCTURAL_PRIMITIVES_CSS = `
+/* Skeuomorphic macOS-style window chrome for UI mockups. Usage:
+     <div class="window" data-title="App name"> …mockup content… </div>
+   Draws a 40px title bar with the three traffic-light dots (red/yellow/green)
+   and an optional centred title from data-title. Content sits below the bar.
+   Add the desktop class for a full desktop-screen canvas — min-height 900px,
+   i.e. the 1440x900 (16:10) standard design canvas — so a screen mockup looks
+   like a real window with viewport breathing room rather than a short strip.
+   Omit desktop for dialogs / small components so they stay content-sized.
+
+   A mockup renders an app's own UI, so it owns a STABLE surface that does NOT
+   flip with the host theme — otherwise a light dashboard mockup renders on a dark
+   window in a dark-mode viewer and every subtle gray label washes out (same
+   surface-vs-ink mismatch the .code primitive locks against). Default is a light
+   canvas with pinned dark ink and color:inherit re-scoped to every child so the
+   host's light-dark() ink can never leak in. Add the dark class
+   (class="window dark") for a genuinely dark-UI mockup. */
+.window {
+  position: relative;
+  padding-top: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e2e2;
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+.window * { color: inherit; }
+.window::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background-color: #f1f1f1;
+  border-bottom: 1px solid #e2e2e2;
+  background-image:
+    radial-gradient(circle at 19px 20px, #ff5f57 6px, transparent 6.5px),
+    radial-gradient(circle at 39px 20px, #febc2e 6px, transparent 6.5px),
+    radial-gradient(circle at 59px 20px, #28c840 6px, transparent 6.5px);
+  background-repeat: no-repeat;
+}
+.window::after {
+  content: attr(data-title);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b6b6b;
+  pointer-events: none;
+}
+.window.dark {
+  border-color: #2a2a2a;
+  background: #161616;
+  color: #e6edf3;
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.4);
+}
+.window.dark::before {
+  background-color: #1f1f1f;
+  border-bottom-color: #2a2a2a;
+}
+.window.dark::after { color: #9b9b9b; }
+.window.desktop {
+  min-height: 900px;
+}
+/* Locked-dark code / terminal primitive. Reach for this instead of hand-rolling
+   a dark code container — the recurring failure is a custom dark <div> that sets
+   its own background but lets base text inherit .wrap's light-dark() ink, which
+   resolves to near-black in light host mode and vanishes against the dark panel.
+   This class locks BOTH background and ink, and re-scopes color:inherit to every
+   child so the host theme can never leak in. Ships the verified github-dark token
+   palette so syntax highlighting reads against #0f172a without per-token tuning.
+   Usage: <div class="code"><span class="kw">gcloud</span> services enable …</div>
+   .terminal is an alias; add .terminal for a prompt feel (same colors). */
+.code, .terminal {
+  background: #0f172a;
+  color: #e6edf3;
+  border-radius: 12px;
+  padding: 18px 22px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  overflow: auto;
+  margin: 16px 0 24px;
+}
+.code *, .terminal * { color: inherit; }
+.code .kw,      .terminal .kw      { color: #ff7b72; }  /* keywords, control flow */
+.code .string,  .terminal .string  { color: #a5d6ff; }  /* strings, attr values */
+.code .fn,      .terminal .fn      { color: #d2a8ff; }  /* function names */
+.code .prop,    .terminal .prop    { color: #79c0ff; }  /* identifiers, properties */
+.code .num,     .terminal .num     { color: #ffa657; }  /* numbers, constants */
+.code .comment, .terminal .comment { color: #8b949e; }  /* comments */
+.code .muted,   .terminal .muted   { color: #94a3b8; }  /* dim / secondary */
+.code .accent,  .terminal .accent  { color: #6ee7b7; }  /* highlight / success */
+@media print {
+  /* Force the locked-dark primitives light for print — browsers drop background
+     colours by default, which would otherwise strand their light ink on white
+     paper. Applies in both normal and app-fidelity mode. The !important here
+     also (intentionally) overrides the normal branch's non-print-gated pre/code
+     theming, so code reads as dark-on-light on paper regardless of host theme. */
+  pre, code, .code, .terminal { background: #f4f3ed !important; color: #111 !important; border: 1px solid #ddd; }
+  .code *, .terminal * { color: #111 !important; }
+  .window.dark { background: #ffffff !important; color: #111 !important; }
+  .window.dark * { color: #111 !important; }
+}
+`;
+
   const unreadIds = new Set();
   let totalPushes = 0;
   const iframes = new Set();
@@ -653,7 +774,11 @@
 <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+/* Sane sans-serif floor so an unstyled mockup doesn't fall back to Times serif.
+   No CDN font here (that's the agent's call in fidelity mode) — the pushed HTML
+   can override font-family inline / in its own <style>, which wins the cascade. */
+html, body { margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+${STRUCTURAL_PRIMITIVES_CSS}
 </style>
 </head>
 <body>
@@ -671,9 +796,10 @@ ${body}
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
 <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
 <style>
+*, *::before, *::after { box-sizing: border-box; }
 ${PRESET_TOKENS_CSS}
 ${SEMANTIC_CHIPS_CSS}
-*, *::before, *::after { box-sizing: border-box; }
+${STRUCTURAL_PRIMITIVES_CSS}
 html, body {
   margin: 0;
   background: var(--ds-bg-elev);
@@ -720,77 +846,6 @@ body > *:last-child { margin-bottom: 0 !important; }
   max-width: 100% !important;
   margin-left: 0;
   margin-right: 0;
-}
-/* Skeuomorphic macOS-style window chrome for UI mockups. Usage:
-     <div class="window" data-title="App name"> …mockup content… </div>
-   Draws a 40px title bar with the three traffic-light dots (red/yellow/green)
-   and an optional centred title from data-title. Content sits below the bar.
-   Add the desktop class for a full desktop-screen canvas — min-height 900px,
-   i.e. the 1440x900 (16:10) standard design canvas — so a screen mockup looks
-   like a real window with viewport breathing room rather than a short strip.
-   Omit desktop for dialogs / small components so they stay content-sized.
-
-   A mockup renders an app's own UI, so it owns a STABLE surface that does NOT
-   flip with the host theme — otherwise a light dashboard mockup renders on a dark
-   window in a dark-mode viewer and every subtle gray label washes out (same
-   surface-vs-ink mismatch the .code primitive locks against). Default is a light
-   canvas with pinned dark ink and color:inherit re-scoped to every child so the
-   host's light-dark() ink can never leak in. Add the dark class
-   (class="window dark") for a genuinely dark-UI mockup. */
-.window {
-  position: relative;
-  padding-top: 40px;
-  border-radius: 12px;
-  border: 1px solid #e2e2e2;
-  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.16);
-  overflow: hidden;
-  background: #ffffff;
-  color: #1a1a1a;
-}
-.window * { color: inherit; }
-.window::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background-color: #f1f1f1;
-  border-bottom: 1px solid #e2e2e2;
-  background-image:
-    radial-gradient(circle at 19px 20px, #ff5f57 6px, transparent 6.5px),
-    radial-gradient(circle at 39px 20px, #febc2e 6px, transparent 6.5px),
-    radial-gradient(circle at 59px 20px, #28c840 6px, transparent 6.5px);
-  background-repeat: no-repeat;
-}
-.window::after {
-  content: attr(data-title);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b6b6b;
-  pointer-events: none;
-}
-.window.dark {
-  border-color: #2a2a2a;
-  background: #161616;
-  color: #e6edf3;
-  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.4);
-}
-.window.dark::before {
-  background-color: #1f1f1f;
-  border-bottom-color: #2a2a2a;
-}
-.window.dark::after { color: #9b9b9b; }
-.window.desktop {
-  min-height: 900px;
 }
 .wrap { display: block; }
 .kicker {
@@ -858,35 +913,6 @@ pre {
   margin: 16px 0 24px;
 }
 pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
-/* Locked-dark code / terminal primitive. Reach for this instead of hand-rolling
-   a dark code container — the recurring failure is a custom dark <div> that sets
-   its own background but lets base text inherit .wrap's light-dark() ink, which
-   resolves to near-black in light host mode and vanishes against the dark panel.
-   This class locks BOTH background and ink, and re-scopes color:inherit to every
-   child so the host theme can never leak in. Ships the verified github-dark token
-   palette so syntax highlighting reads against #0f172a without per-token tuning.
-   Usage: <div class="code"><span class="kw">gcloud</span> services enable …</div>
-   .terminal is an alias; add .terminal for a prompt feel (same colors). */
-.code, .terminal {
-  background: #0f172a;
-  color: #e6edf3;
-  border-radius: 12px;
-  padding: 18px 22px;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 13.5px;
-  line-height: 1.7;
-  overflow: auto;
-  margin: 16px 0 24px;
-}
-.code *, .terminal * { color: inherit; }
-.code .kw,      .terminal .kw      { color: #ff7b72; }  /* keywords, control flow */
-.code .string,  .terminal .string  { color: #a5d6ff; }  /* strings, attr values */
-.code .fn,      .terminal .fn      { color: #d2a8ff; }  /* function names */
-.code .prop,    .terminal .prop    { color: #79c0ff; }  /* identifiers, properties */
-.code .num,     .terminal .num     { color: #ffa657; }  /* numbers, constants */
-.code .comment, .terminal .comment { color: #8b949e; }  /* comments */
-.code .muted,   .terminal .muted   { color: #94a3b8; }  /* dim / secondary */
-.code .accent,  .terminal .accent  { color: #6ee7b7; }  /* highlight / success */
 blockquote {
   border-left: 3px solid var(--ds-accent);
   margin: 18px 0;
@@ -933,13 +959,7 @@ img { max-width: 100%; height: auto; border-radius: 10px; }
   body { padding: 24px !important; max-width: none !important; }
   body > p, body > .deck, body > .lede, body > ul, body > ol, body > blockquote,
   body > h1, body > h2, body > h3, body > h4 { max-width: none !important; }
-  pre, code, .code, .terminal { background: #f4f3ed !important; color: #111 !important; border: 1px solid #ddd; }
-  .code *, .terminal * { color: #111 !important; }
-  /* Force the dark window variant light for print — browsers drop background
-     colors by default, which would leave its light ink invisible on white paper
-     (same reason .code/.terminal are forced light above). */
-  .window.dark { background: #ffffff !important; color: #111 !important; }
-  .window.dark * { color: #111 !important; }
+  /* .code/.terminal/.window.dark print overrides live in STRUCTURAL_PRIMITIVES_CSS. */
   .card, .panel { background: #fff !important; border: 1px solid #ddd !important; box-shadow: none !important; }
   a { color: #111 !important; text-decoration: underline; border-bottom: 0 !important; }
 }

@@ -2,6 +2,18 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.0 — 2026-05-26
+
+### Fixed
+- **App-fidelity mode (`kind:"mockup"`/`"app"`) no longer strips the structural primitives — `.window`/`.code`/`.terminal` now render in mockups.** The wrapper has two branches: a normal presentation branch and an app-fidelity branch for UI recreations (which skips presets/tokens/chips/prose-caps/body-bg so the agent controls every pixel). But app-fidelity skipped the *entire* built-in stylesheet — including the self-contained `.window` window chrome and `.code`/`.terminal` code blocks — while the skill and the `push` tool description told agents to use `.window` *for mockups*. So a `kind:"mockup"` push with `<div class="window">` rendered as unstyled serif text with no chrome (the same "I shipped a fix but it doesn't apply here" surprise as the 0.2.29 `.window` washout). Extracted the primitives — which use fixed, theme-independent colours and can't leak the host theme — into a shared `STRUCTURAL_PRIMITIVES_CSS` constant injected into BOTH wrapper branches (single source, no duplication; the normal branch's inline copies and their `@media print` overrides were removed). A mockup can now reach for `.window`/`.code`/`.terminal` and they render, in either kind.
+- **App-fidelity mode now sets a system-sans default font instead of falling back to serif.** It deliberately omits the Inter webfont (so the agent controls typography with no CDN dependency), but it also left no `font-family` at all, so any mockup that didn't set its own font rendered in Times serif. Added a `system-ui, -apple-system, "Segoe UI", sans-serif` floor; the pushed HTML's own `font-family` still wins the cascade.
+
+### Added
+- **Visual-regression test suite (`tests/visual/`).** A fixture battery covering every built-in primitive plus realistic composites, each carrying an injected contrast-audit that walks text nodes, composites translucent backgrounds over the host backdrop, computes WCAG contrast, and reports washout failures. A driver pushes them to a running server; the suite is rendered across the full preset × theme × density matrix (+ print) to catch surface-vs-ink regressions. The two fixes above were both found by this suite. See `tests/visual/README.md`.
+
+### Docs
+- **`push` tool `kind` description and the using-easel skill now state what app-fidelity keeps vs strips** — structural primitives + sans default kept; presentation defaults (preset tokens, chips, prose caps, body bg/color, Inter) stripped — so the "use `.window` for mockups" guidance and the engine no longer contradict each other.
+
 ## 0.2.29 — 2026-05-25
 
 ### Fixed
