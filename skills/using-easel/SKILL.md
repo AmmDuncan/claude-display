@@ -299,7 +299,7 @@ Most mockups appear *inside* an explanation push — prose intro, embedded UI mo
 `.full-bleed` is injected into every presentation push. Prose is left-aligned and capped at ~880px; `.full-bleed` fills the **content column's full width from the same left edge** — wider than the prose, sharing one left margin down the card. It does *not* bleed to the card's physical edge: the body padding stays as a gutter, so neither the mockup nor the text ever touches the card border.
 
 Two cases, two tools:
-- **Whole push is a mockup / app recreation** → `kind: "mockup"` (or `"app"`) on the push. Strips the entire presentation frame; content owns the canvas.
+- **Whole push is a mockup / app recreation** → `kind: "mockup"` (or `"app"`) on the push. Strips the *presentation* frame (preset tokens, semantic chips, prose-width caps, body bg/color, the Inter webfont) so the content owns the canvas — but **keeps the structural primitives** (`.window`/`.window.dark`, `.code`/`.terminal`) and a neutral system-sans default font, so `.window` and friends still render in a mockup. Set your own `font-family` to override the sans default.
 - **Mockup embedded in an explanation** → leave the push as-is and wrap the mockup section in `<div class="full-bleed">`.
 
 ### Window chrome for UI mockups
