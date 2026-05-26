@@ -859,6 +859,7 @@ ${STRUCTURAL_PRIMITIVES_CSS}
 </head>
 <body>
 ${body}
+<script>${imageExportScript()}</script>
 <script>${selfMeasureScript(pushId)}</script>
 </body>
 </html>`;

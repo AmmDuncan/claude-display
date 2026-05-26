@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.1 — 2026-05-26
+
+### Fixed
+- **App-fidelity pushes (`kind:"app"`/`"mockup"`) can now be exported — they were silently hanging.** The 0.3.3 export fix (toSvg-based, rAF-free bridge) was only wired into `buildDefaultWrapper`'s *normal* branch and `injectBridge`. `buildDefaultWrapper` returns early for app-fidelity with a separate template, and that branch loaded the html-to-image CDN but never injected the `imageExportScript` bridge — so `kind:"app"`/`"mockup"` cards had **no `easel:image` handler at all**. Clicking export posted a message nothing listened for; the push never reported back and the 30s watchdog fired ("Export timed out…"). The bridge is now injected into the app-fidelity branch too. The `image-export` regression test now asserts the bridge is referenced by **both** `buildDefaultWrapper` branches plus `injectBridge`, so no single render path can lose it again. Verified live: an app-fidelity auth mockup that timed out now exports in ~0.5s.
+
 ## 0.4.0 — 2026-05-26
 
 ### Added
