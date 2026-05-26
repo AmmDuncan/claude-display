@@ -62,10 +62,14 @@ test("parent arms an export watchdog timeout so a stall can't spin forever", () 
   );
 });
 
-test("both render paths share the one export bridge (no drift)", () => {
+test("every render path wires the export bridge (no drift)", () => {
+  // 1 definition + 3 call sites: buildDefaultWrapper's app-fidelity branch,
+  // its normal branch, and injectBridge. The app-fidelity branch was missed in
+  // 0.3.3, so kind:"app"/"mockup" pushes had no export handler and hung — this
+  // count guards against any single branch losing the bridge again.
   assert.equal(
     viewer.match(/imageExportScript\(\)/g)?.length,
-    3,
-    "imageExportScript defined once and referenced by buildDefaultWrapper + injectBridge",
+    4,
+    "imageExportScript defined once and referenced by both buildDefaultWrapper branches + injectBridge",
   );
 });
