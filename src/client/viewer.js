@@ -829,7 +829,10 @@ body > h1, body > h2, body > h3, body > h4,
 body > .wrap > p, body > .wrap > .deck, body > .wrap > .lede,
 body > .wrap > ul, body > .wrap > ol, body > .wrap > blockquote,
 body > .wrap > h1, body > .wrap > h2, body > .wrap > h3, body > .wrap > h4 {
-  max-width: 880px;
+  /* ~56ch of "0"-width lands ~66 actual characters in proportional Inter
+     (avg glyph is narrower than "0"), i.e. Bringhurst's reading-measure sweet
+     spot — not 56 literal characters. */
+  max-width: 56ch;
 }
 body > *:first-child { margin-top: 0 !important; }
 body > *:last-child { margin-bottom: 0 !important; }
@@ -840,12 +843,13 @@ body > *:last-child { margin-bottom: 0 !important; }
    stays as a gutter, so neither the mockup nor the surrounding text ever touches
    the card border. (The name is historical — it's "full content width", not
    "bleed to the card edge".) Capped at 100% of the content column, which the
-   body's max-width already limits to desktop-realistic proportions. */
+   body's max-width already limits to desktop-realistic proportions.
+   Vertical margin gives an embedded mockup breathing room from the prose above
+   and below it (without it, the next paragraph hugs the frame). */
 .full-bleed {
   width: 100%;
   max-width: 100% !important;
-  margin-left: 0;
-  margin-right: 0;
+  margin: 32px 0;
 }
 .wrap { display: block; }
 .kicker {

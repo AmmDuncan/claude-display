@@ -2,6 +2,12 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.1 — 2026-05-26
+
+### Fixed
+- **Prose measure tightened from ~90 to ~66 characters per line.** The reading-column cap was `max-width: 880px`, which at the 18px body font produces ~90-character lines — past WCAG 1.4.8's 80-char ceiling and well past Bringhurst's 45–75 comfortable range. Changed to `max-width: 56ch`. The `ch` unit is the width of the "0" glyph and proportional Inter averages narrower, so 56ch renders ~66 actual characters — the reading-measure sweet spot. (`ch` scales with font-size, so headings stay proportional; short headings never hit the cap, so it's load-bearing only on body paragraphs, which is correct.)
+- **`.full-bleed` now has vertical breathing room.** It only set horizontal margins, so a paragraph after an embedded mockup hugged the frame with no gap. Added `margin: 32px 0`; it collapses correctly against adjacent prose margins (32px, not 64) and the existing first/last-child margin resets still zero it at the card's top/bottom edge.
+
 ## 0.3.0 — 2026-05-26
 
 ### Fixed
