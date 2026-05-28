@@ -295,6 +295,10 @@
       }
       return;
     }
+    if (data.type === "easel:contrast-warn") {
+      stampContrastWarning(data.pushId, data.count, data.samples);
+      return;
+    }
     if (data.type === "easel:image-error") {
       console.error("[easel] iframe export error", data);
       clearExportWatchdog(data.pushId);
@@ -836,6 +840,42 @@
     );
   }
 
+  /**
+   * In-iframe contrast guard. Scans rendered text-bearing elements and flags
+   * any whose computed text colour fails a WCAG contrast ratio of 3:1 against
+   * its effective background (climbs ancestors past transparent fills).
+   *
+   * Catches BOTH directions of the recurring locked-mode bug from Rule 30:
+   *   - dark text on a hand-rolled dark code container (the #1 case — author
+   *     skipped the .code/.terminal primitive and base text inherits a
+   *     light-mode ink against #0f172a)
+   *   - light text on a hand-rolled bright container
+   *
+   * Runs once after fonts ready + a 400ms settle. Bounded at 2000 text-bearing
+   * elements scanned to stay cheap on large pushes. Posts a single
+   * easel:contrast-warn to the parent with up to 5 offender samples; parent
+   * stamps a chip on the card so the author actually notices.
+   *
+   * Shared verbatim by buildDefaultWrapper (both branches) and injectBridge.
+   */
+  function contrastGuardScript(pushId) {
+    return (
+      "(function(){var ID=" +
+      JSON.stringify(pushId) +
+      ";function parseColor(c){if(!c)return null;var m=c.match(/rgba?\\(([^)]+)\\)/);if(!m)return null;var p=m[1].split(',').map(function(s){return parseFloat(s.trim())});if(p.length<3||p.some(isNaN))return null;return{r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1}}" +
+      "function lum(c){function ch(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)}return 0.2126*ch(c.r)+0.7152*ch(c.g)+0.0722*ch(c.b)}" +
+      "function contrast(a,b){var la=lum(a),lb=lum(b);var hi=Math.max(la,lb),lo=Math.min(la,lb);return(hi+0.05)/(lo+0.05)}" +
+      "function effBg(el){var n=el;while(n&&n.nodeType===1){var cs=getComputedStyle(n);var bg=parseColor(cs.backgroundColor);if(bg&&bg.a>0.05)return bg;n=n.parentElement}return{r:255,g:255,b:255,a:1}}" +
+      "function hasDirectText(el){for(var i=0;i<el.childNodes.length;i++){var n=el.childNodes[i];if(n.nodeType===3&&n.nodeValue.trim().length>0)return true}return false}" +
+      "function fmt(c){return'rgb('+Math.round(c.r)+','+Math.round(c.g)+','+Math.round(c.b)+')'}" +
+      "function scan(){if(!document.body)return;var offenders=[];var seen=0;var all=document.body.querySelectorAll('*');for(var i=0;i<all.length&&seen<2000;i++){var el=all[i];if(!hasDirectText(el))continue;seen++;var cs=getComputedStyle(el);if(cs.visibility==='hidden'||cs.display==='none')continue;var fg=parseColor(cs.color);if(!fg||fg.a<0.05)continue;var bg=effBg(el);var ratio=contrast(fg,bg);if(ratio<3){offenders.push({tag:el.tagName.toLowerCase(),cls:(el.className&&el.className.toString?el.className.toString():'').slice(0,80),text:(el.textContent||'').trim().slice(0,60),ratio:Math.round(ratio*100)/100,fg:fmt(fg),bg:fmt(bg)})}}" +
+      "if(offenders.length){console.warn('[easel] low-contrast text detected ('+offenders.length+' element(s), threshold 3:1). The #1 cause is a hand-rolled dark code container — use <div class=\"code\"> or <div class=\"terminal\"> instead; they lock background AND ink and re-scope color:inherit to children. Offenders:',offenders.slice(0,10));try{parent.postMessage({type:'easel:contrast-warn',pushId:ID,count:offenders.length,samples:offenders.slice(0,5)},'*')}catch(e){}}}" +
+      "function run(){setTimeout(scan,400)}" +
+      "if(document.fonts&&document.fonts.ready){document.fonts.ready.then(run).catch(run)}else{run()}" +
+      "})();"
+    );
+  }
+
   function buildDefaultWrapper(body, theme, preset, pushId, appFidelity) {
     const density = currentDensity();
     // app-fidelity mode: skip presentation defaults (presets, semantic chips,
@@ -860,6 +900,7 @@ ${STRUCTURAL_PRIMITIVES_CSS}
 <body>
 ${body}
 <script>${imageExportScript()}</script>
+<script>${contrastGuardScript(pushId)}</script>
 <script>${selfMeasureScript(pushId)}</script>
 </body>
 </html>`;
@@ -1076,6 +1117,7 @@ ${body}
 })();
 </script>
 <script>${imageExportScript()}</script>
+<script>${contrastGuardScript(pushId)}</script>
 <script>${selfMeasureScript(pushId)}</script>
 </body>
 </html>`;
@@ -1088,8 +1130,9 @@ ${body}
       JSON.stringify({ theme, preset, density }) +
       ");window.addEventListener('message',function(e){if(!e||!e.data)return;if(e.data.type==='easel:config')a(e.data);if(e.data.type==='easel:theme')a({theme:e.data.theme});if(e.data.type==='easel:print'){try{window.print()}catch(_){}}})})();</script>";
     const imageScript = "<script>" + imageExportScript() + "</script>";
+    const guardScript = "<script>" + contrastGuardScript(pushId) + "</script>";
     const measureScript = "<script>" + selfMeasureScript(pushId) + "</script>";
-    const combined = configScript + imageScript + measureScript;
+    const combined = configScript + imageScript + guardScript + measureScript;
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, combined + "</body>");
     return html + combined;
   }
@@ -1106,6 +1149,35 @@ ${body}
     // requestAnimationFrame so layout settles before pill recomputes.
     requestAnimationFrame(updatePill);
     return { wasNearBottom, card };
+  }
+
+  /**
+   * Stamp a "contrast" warning chip on a push card's meta row after the
+   * iframe reports low-contrast text. Idempotent: only inserts once per push.
+   * Tooltip lists the first few offenders so the author can locate them
+   * without opening DevTools. The console.warn fires inside the iframe too,
+   * so DevTools still shows the full sample list and computed rgb pairs.
+   */
+  function stampContrastWarning(pushId, count, samples) {
+    if (!pushId) return;
+    const card = document.getElementById("push-" + pushId);
+    if (!card) return;
+    const meta = card.querySelector(".push-meta");
+    if (!meta || meta.querySelector(".push-warn")) return;
+    const chip = document.createElement("span");
+    chip.className = "push-warn";
+    chip.textContent = "⚠ contrast";
+    const head = `${count} low-contrast element(s) detected (WCAG ratio < 3:1).\nMost common cause: a hand-rolled dark code container — use class="code" or class="terminal".\n`;
+    const list = (samples || [])
+      .map((s) => `• <${s.tag}${s.cls ? "." + s.cls.split(/\s+/).join(".") : ""}> "${s.text}" (${s.ratio}:1, ${s.fg} on ${s.bg})`)
+      .join("\n");
+    chip.title = head + list;
+    const time = meta.querySelector(".push-time");
+    if (time) {
+      meta.insertBefore(chip, time);
+    } else {
+      meta.appendChild(chip);
+    }
   }
 
   function removeCardFromDom(pushId) {
