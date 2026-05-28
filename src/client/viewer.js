@@ -11,7 +11,8 @@
   // Per-push export watchdog timers. If the iframe never posts back
   // image-ready / image-error (e.g. a render stall), the watchdog clears the
   // button spinner and surfaces an error instead of spinning forever.
-  const EXPORT_TIMEOUT_MS = 30000;
+  // Generous (2 min) so large/heavy PDF/PNG exports have time to rasterize.
+  const EXPORT_TIMEOUT_MS = 120000;
   const exportWatchdogs = new Map();
   function clearExportSpinner(pushId) {
     const iframeEl = cardsEl.querySelector(
