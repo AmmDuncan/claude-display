@@ -2,6 +2,11 @@
 
 All notable changes to easel. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.4.2 — 2026-05-28
+
+### Added
+- **Pushes now self-check for low-contrast text and stamp a warning chip on the card when they find any.** The #1 recurring author bug — flagged prominently in the push tool description and *still* shipped repeatedly — is a hand-rolled dark code container: author sets `background:#0b0f17` on a custom div but leaves base text inheriting the wrapper's `light-dark(#111, …)` ink, which resolves to near-black against the dark panel in light host mode and the code vanishes (only spans with explicit syntax colours survive). A new in-iframe guard now runs after fonts ready, walks text-bearing elements (bounded at 2000 for cheap), computes WCAG contrast ratio between each one's text colour and its effective background (climbing past transparent ancestors), and posts back `easel:contrast-warn` if any ratio is below 3:1 — well below AA's 4.5:1 floor and the point where text becomes genuinely unreadable. The parent stamps an amber `⚠ contrast` chip on the push's meta row with the offender list in the tooltip (tag, class, ratio, fg-on-bg rgb pair), and the iframe also `console.warn`s the full sample so the offenders surface in DevTools. Symmetric: catches both directions of the bug (dark-on-dark *and* light-on-light hand-rolled containers). The guard is injected into all three render paths (`buildDefaultWrapper` app-fidelity branch, `buildDefaultWrapper` presentation branch, `injectBridge`), and a regression test asserts the injection count so no future render branch can silently skip the check. The right fix is still to reach for the locked-mode primitives (`<div class="code">` / `<div class="terminal">`), and the warning text points authors there. Covered by `tests/unit/contrast-guard.test.mjs`.
+
 ## 0.4.1 — 2026-05-26
 
 ### Fixed
